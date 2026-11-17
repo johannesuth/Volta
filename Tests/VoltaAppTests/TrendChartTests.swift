@@ -53,9 +53,9 @@ final class TrendChartTests: XCTestCase {
 
     func testCompactPanelWithSlightlyLargerText() {
         // 2.3.0: text 1.11× the grid in a 352 pt panel. The user asked for a 5–10 % smaller panel
-        // with about 5 % larger text: 1.11 × 1.05 ≈ 1.165.
+        // with about 5 % larger text: 1.11 × 1.05 ≈ 1.165. 2.5.0: 5 % smaller again, 1.165 × 0.95 ≈ 1.107.
         let dim = Dim()
-        XCTAssertEqual(dim.pointSize(10), 11.65, accuracy: 0.001)
+        XCTAssertEqual(dim.pointSize(10), 11.07, accuracy: 0.001)
         // 2.3.2: 5–10 % narrower again, text unchanged.
         XCTAssertEqual(Dim.panelWidth, 312)
         XCTAssertLessThanOrEqual(Dim.panelWidth / 336, 0.95)

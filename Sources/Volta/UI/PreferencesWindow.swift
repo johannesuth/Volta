@@ -7,7 +7,7 @@ import UserNotifications
 import VoltaLanguageCore
 
 enum PrefTab: String, CaseIterable, Identifiable {
-    case general, menubar, dashboard, alerts, gadgets, history, about
+    case general, menubar, dashboard, alerts, gadgets, history, extras, about
     var id: Self { self }
     var title: String {
         switch self {
@@ -17,6 +17,7 @@ enum PrefTab: String, CaseIterable, Identifiable {
         case .alerts: Copy.text("Warnungen", "Alerts")
         case .gadgets: Copy.text("Zubehör", "Accessories")
         case .history: Copy.text("Verlauf", "History")
+        case .extras: "Extras"
         case .about: Copy.text("Info", "About")
         }
     }
@@ -28,6 +29,7 @@ enum PrefTab: String, CaseIterable, Identifiable {
         case .alerts: "bell.badge"
         case .gadgets: "headphones"
         case .history: "clock.arrow.circlepath"
+        case .extras: "puzzlepiece.extension"
         case .about: "info.circle"
         }
     }
@@ -46,7 +48,7 @@ struct PreferencesView: View {
                             Image(systemName: t.symbol).font(.system(size: 15, weight: .medium)).frame(height: 20)
                             Text(t.title).font(.system(size: 11, weight: .medium))
                         }
-                        .frame(width: 84, height: 50)
+                        .frame(width: 76, height: 50)
                         .foregroundStyle(tab == t ? Hue.accent : .secondary)
                         .background(tab == t ? Hue.accent.opacity(0.12) : .clear, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
                         .contentShape(Rectangle())
@@ -65,6 +67,7 @@ struct PreferencesView: View {
                 case .alerts: AlertPrefs()
                 case .gadgets: GadgetPrefs()
                 case .history: HistoryPrefs()
+                case .extras: ExtrasPrefs()
                 case .about: AboutPrefs()
                 }
             }
@@ -80,7 +83,7 @@ struct PreferencesView: View {
 // MARK: - Shared pieces
 
 /// A settings row label: a small icon tile, a title and an optional one-line explanation.
-private struct SettingLabel: View {
+struct SettingLabel: View {
     let title: String
     var detail: String? = nil
     let symbol: String
@@ -148,7 +151,7 @@ private struct GeneralPrefs: View {
                 }
             }
 
-            Section(Copy.text("Start", "Startup")) {
+            Section(Copy.text("Start und Menü", "Startup and menu")) {
                 Toggle(isOn: Binding(get: { launchAtLogin }, set: setLaunch)) {
                     SettingLabel(title: Copy.text("Beim Anmelden starten", "Open at login"),
                                  detail: Copy.text("Volta startet automatisch, wenn du dich anmeldest.",
@@ -175,6 +178,13 @@ private struct GeneralPrefs: View {
                 }
                 if store.c.shortcutOn {
                     LabeledContent(Copy.text("Kombination", "Shortcut")) { ShortcutRecorder(combo: $store.c.shortcut) }
+                }
+                Toggle(isOn: Binding(get: { !store.c.hiddenTiles.contains(.trend) },
+                                     set: { store.toggleTile(.trend, on: $0) })) {
+                    SettingLabel(title: Copy.text("Verlauf im Menü zeigen", "Show history in the menu"),
+                                 detail: Copy.text("Das Diagramm der letzten Stunden und Tage. Aufgezeichnet wird weiter.",
+                                                   "The chart of the last hours and days. Recording continues."),
+                                 symbol: TileKind.trend.icon)
                 }
             }
 
@@ -242,7 +252,7 @@ private struct GeneralPrefs: View {
 }
 
 /// Click, then press the new combination (needs at least one modifier).
-private struct ShortcutRecorder: View {
+struct ShortcutRecorder: View {
     @Binding var combo: KeyCombo
     @State private var listening = false
     @State private var monitor: Any?
@@ -995,7 +1005,7 @@ final class PreferencesWindow: NSObject, NSWindowDelegate {
             w.styleMask = [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView]
             w.titlebarAppearsTransparent = true
             w.titleVisibility = .hidden
-            w.setContentSize(NSSize(width: 680, height: 700))
+            w.setContentSize(NSSize(width: 680, height: 760))
             w.isReleasedWhenClosed = false
             w.delegate = self
             w.center()

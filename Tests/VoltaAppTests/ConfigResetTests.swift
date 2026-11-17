@@ -52,4 +52,16 @@ final class ConfigResetTests: XCTestCase {
         XCTAssertEqual(Config.migratedExpansion(TileExpansion(openTiles: [.vitals])), TileExpansion.standard)
         XCTAssertEqual(Config.migratedExpansion(TileExpansion(openTiles: [.trend])), TileExpansion(openTiles: [.trend]))
     }
+
+    func testHistoryCanBeHiddenAndShownAgainInTheMenu() {
+        var config = Config()
+        config.setTile(.trend, shown: false)
+        XCTAssertFalse(config.tiles.filter { !config.hiddenTiles.contains($0) }.contains(.trend))
+        config.setTile(.trend, shown: false)
+        XCTAssertEqual(config.hiddenTiles.filter { $0 == .trend }.count, 1, "hiding twice keeps one entry")
+        config.setTile(.trend, shown: true)
+        XCTAssertTrue(config.tiles.filter { !config.hiddenTiles.contains($0) }.contains(.trend))
+        XCTAssertEqual(config.hiddenTiles, Config.defaultHiddenTiles)
+    }
+
 }

@@ -2,6 +2,25 @@
 
 All notable changes to Volta are recorded here. Dates use ISO 8601.
 
+## [2.5.0] — 2026-11-17
+
+### Added
+- **Settings → Extras.** A catalog of optional tools that ship with Volta and stay off until installed; nothing is downloaded. Install and Uninstall show a short progress ring that turns into a check mark and closes by itself. Each installed extra has its own small settings window.
+- **Stay Awake**, the first extra:
+  - Keeps the Mac from idle sleep with a standard power assertion (`PreventUserIdleSystemSleep`), or also keeps the display on (`PreventUserIdleDisplaySleep`). Both end with Volta's process.
+  - Optional closed-lid mode via `pmset -a disablesleep 1` after one administrator approval. A tiny root guard holds the setting only while Volta runs and a flag file exists, then restores `disablesleep 0`, so switching off, quitting and even a crash need no second password. It also stops below 10 % on battery.
+  - A card in the dashboard (switch, “On since …”, chips for display and closed lid) shown only while installed.
+  - Two configurable global shortcuts, ⌃⌥W (Stay Awake) and ⌃⌥D (keep display on), with a short on-screen confirmation and a warning when a combination is already used.
+  - Not switched on at launch: a forgotten switch cannot keep the Mac awake for days.
+- **Settings → General → Show history in the menu** hides or shows the history chart (recording continues). The section is now called “Startup and menu”; the Settings window is 60 pt taller so General fits without scrolling.
+
+### Changed
+- Dashboard text is 5 % smaller (type scale 1.165 → 1.107) and a touch lighter: weights sit on the system font's variable axis at 480 / 555 / 660 instead of medium 510 / semibold 590 / bold 700, for text and the rounded figures alike.
+
+### Verification
+- `swift test`: 113 tests passed (99 app, 14 language core), including the closed-lid guard run as a real shell process with a stand-in `pmset` (restores sleep when switched off and when Volta's process ends), assertion types, shortcut defaults and clashes, config migration and the font weights.
+- Checked live: install and uninstall animations; `pmset -g assertions` shows “Volta: Wach bleiben” with the system and display assertion; closed-lid mode after administrator approval showed `SleepDisabled 1` and returned to `0` within seconds of switching off; ⌃⌥W and ⌃⌥D with their confirmations; card and shortcuts gone after uninstalling; hiding the history chart from General.
+
 ## [2.4.2] — 2026-11-17
 
 ### Added

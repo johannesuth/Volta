@@ -3,6 +3,7 @@
 
 import SwiftUI
 import AppKit
+import os
 
 // MARK: - Colour
 
@@ -17,6 +18,7 @@ enum Hue {
     static let coral = Color(red: 0.78, green: 0.48, blue: 0.45)
     static let blush = Color(red: 0.74, green: 0.54, blue: 0.64)
     static let slate = Color(red: 0.58, green: 0.61, blue: 0.68)
+    static let mocha = Color(red: 0.76, green: 0.58, blue: 0.45)
 
     static let good = mint
     static let warn = amber
@@ -84,8 +86,8 @@ enum Hue {
 /// Fixed-size layout metrics shared across the dropdown.
 struct Dim {
     var k: CGFloat = 1
-    /// Type is set about 16.5 % larger than the layout grid, so text reads comfortably in a compact panel.
-    var type: CGFloat = 1.165
+    /// Type is set about 10.7 % larger than the layout grid, so text reads comfortably in a compact panel.
+    var type: CGFloat = 1.107
     /// Width of the dashboard panel in grid points.
     static let panelWidth: CGFloat = 312
     /// Space between the dashboard's cards.
@@ -94,13 +96,43 @@ struct Dim {
     static let chartHeight: CGFloat = 72
     func callAsFunction(_ v: CGFloat) -> CGFloat { v * k }
     func pointSize(_ size: CGFloat) -> CGFloat { size * k * type }
-    /// Regular text is drawn one step heavier (medium), which reads better on the translucent panel.
+    /// Regular text is drawn a little heavier than regular, which reads better on the translucent panel.
     func text(_ size: CGFloat, _ weight: Font.Weight = .regular) -> Font {
-        .system(size: pointSize(size), weight: weight == .regular ? .medium : weight)
+        Font(Self.font(size: pointSize(size), weight: weight, rounded: false))
     }
     func number(_ size: CGFloat, _ weight: Font.Weight = .semibold) -> Font {
-        .system(size: pointSize(size), weight: weight, design: .rounded).monospacedDigit()
+        Font(Self.font(size: pointSize(size), weight: weight, rounded: true)).monospacedDigit()
     }
+
+    /// Positions on the system font's variable weight axis, a touch lighter than the named weights
+    /// (medium 510, semibold 590, bold 700) so the panel does not look heavy.
+    static func weightValue(_ weight: Font.Weight) -> CGFloat {
+        switch weight {
+        case .ultraLight, .thin, .light: 330
+        case .regular, .medium: 480
+        case .semibold: 555
+        case .bold: 660
+        default: 760
+        }
+    }
+
+    /// The system font (or its rounded design for figures) at an exact weight, cached per size.
+    static func font(size: CGFloat, weight: Font.Weight, rounded: Bool) -> NSFont {
+        let value = weightValue(weight)
+        let key = "\(size)|\(value)|\(rounded)"
+        if let cached = fonts.withLockUnchecked({ $0[key] }) { return cached }
+        var base = NSFont.systemFont(ofSize: size, weight: .medium)
+        if rounded, let design = base.fontDescriptor.withDesign(.rounded), let font = NSFont(descriptor: design, size: size) {
+            base = font
+        }
+        let variation = NSFontDescriptor.AttributeName(kCTFontVariationAttribute as String)
+        let axis = 0x7767_6874  // 'wght'
+        let font = NSFont(descriptor: base.fontDescriptor.addingAttributes([variation: [axis: value]]), size: size) ?? base
+        fonts.withLockUnchecked { $0[key] = font }
+        return font
+    }
+
+    private static let fonts = OSAllocatedUnfairLock(uncheckedState: [String: NSFont]())
 }
 
 extension EnvironmentValues {
@@ -121,6 +153,14 @@ extension TileKind {
         case .vitals: Hue.blush
         case .gadgets: Hue.lagoon
         case .apps: Hue.amber
+        }
+    }
+}
+
+extension ExtraID {
+    var hue: Color {
+        switch self {
+        case .stayAwake: Hue.mocha
         }
     }
 }

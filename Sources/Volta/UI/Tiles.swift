@@ -28,6 +28,7 @@ struct DropdownRoot: View {
                 case .apps: AppsTile()
                 }
             }
+            if cfg.extras.has(.stayAwake) { AwakeCard() }
             ActionCard(openPreferences: openPreferences, dismiss: dismiss)
         }
         .padding(dim(8))
@@ -596,6 +597,89 @@ private struct ActionCard: View {
                 .font(dim.number(9.5, .medium))
                 .foregroundStyle(.tertiary)
         }
+    }
+}
+
+/// The Stay Awake extra in the panel, shown only while it is installed.
+private struct AwakeCard: View {
+    @Environment(\.dim) private var dim
+    @Bindable private var store = ConfigStore.shared
+    private let keeper = AwakeKeeper.shared
+    private let extra = ExtraID.stayAwake
+
+    private var status: String {
+        let language = store.c.language
+        if keeper.active { return AwakeStatus.since(keeper.since, language: language) }
+        let off = language.localized(german: "Aus", english: "Off")
+        let prefs = store.c.extras.awake
+        return prefs.shortcutOn ? "\(off) · \(prefs.shortcut.label)" : off
+    }
+
+    var body: some View {
+        let prefs = store.c.extras.awake
+        Tile {
+            VStack(alignment: .leading, spacing: dim(7)) {
+                Toggle(isOn: Binding(get: { keeper.active }, set: { keeper.set($0) })) {
+                    HStack(spacing: dim(8)) {
+                        IconBadge(symbol: extra.symbol, hue: extra.hue, size: dim(20))
+                        VStack(alignment: .leading, spacing: dim(1)) {
+                            Text(extra.title(language: store.c.language))
+                                .font(dim.text(11.5, .semibold))
+                                .foregroundStyle(.primary.opacity(0.88))
+                                .lineLimit(1)
+                            Text(status)
+                                .font(dim.text(9.5))
+                                .foregroundStyle(keeper.active ? AnyShapeStyle(extra.hue) : AnyShapeStyle(.secondary))
+                                .lineLimit(1)
+                        }
+                        Spacer(minLength: dim(4))
+                    }
+                    .contentShape(Rectangle())
+                }
+                .toggleStyle(RowSwitch(working: false))
+                if keeper.active {
+                    HStack(spacing: dim(6)) {
+                        chip("display", Copy.text("Bildschirm an", "Display on"), on: prefs.keepDisplayOn) {
+                            store.c.extras.awake.keepDisplayOn.toggle()
+                        }
+                        chip("laptopcomputer", Copy.text("Zugeklappt", "Lid closed"), on: prefs.lidClosed, busy: keeper.lidPending) {
+                            store.c.extras.awake.lidClosed.toggle()
+                        }
+                        Spacer(minLength: 0)
+                    }
+                    .padding(.leading, dim(28))
+                }
+                if let note = keeper.lidNote {
+                    Text(note)
+                        .font(dim.text(9.5))
+                        .foregroundStyle(Hue.warn)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.leading, dim(28))
+                }
+            }
+            .padding(.vertical, dim(-1))
+        }
+    }
+
+    private func chip(_ symbol: String, _ title: String, on: Bool, busy: Bool = false, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: dim(4)) {
+                if busy {
+                    ProgressView().controlSize(.mini)
+                } else {
+                    Image(systemName: symbol).font(dim.text(9, .semibold))
+                }
+                Text(title).font(dim.text(9.5, .medium)).lineLimit(1)
+            }
+            .padding(.horizontal, dim(8))
+            .padding(.vertical, dim(4))
+            .foregroundStyle(on ? AnyShapeStyle(extra.hue.mix(with: .white, by: 0.25)) : AnyShapeStyle(.secondary))
+            .background(Capsule().fill(on ? extra.hue.opacity(0.22) : Color.primary.opacity(0.06)))
+            .overlay(Capsule().strokeBorder(on ? extra.hue.opacity(0.65) : Color.primary.opacity(0.12), lineWidth: 0.8))
+            .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .disabled(busy)
     }
 }
 

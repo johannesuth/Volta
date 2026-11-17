@@ -344,6 +344,9 @@ struct Config: Codable, Equatable {
     // Accessories
     var hiddenGadgets: [String] = []
 
+    // Extras (Settings → Extras)
+    var extras = ExtrasConfig()
+
     // Data
     var keepDays = 90
     var onboarded = false
@@ -369,6 +372,12 @@ struct Config: Codable, Equatable {
             }
         }
         return out
+    }
+
+    /// Shows or hides a dashboard section; used by Settings → General and → Dashboard alike.
+    mutating func setTile(_ tile: TileKind, shown: Bool) {
+        hiddenTiles.removeAll { $0 == tile }
+        if !shown { hiddenTiles.append(tile) }
     }
 
     func resetForSettings() -> Config {
@@ -467,8 +476,7 @@ final class ConfigStore {
     var shownTiles: [TileKind] { c.tiles.filter { !c.hiddenTiles.contains($0) } }
 
     func toggleTile(_ t: TileKind, on: Bool) {
-        c.hiddenTiles.removeAll { $0 == t }
-        if !on { c.hiddenTiles.append(t) }
+        c.setTile(t, shown: on)
     }
 
     func degrees(_ celsius: Double) -> String {
