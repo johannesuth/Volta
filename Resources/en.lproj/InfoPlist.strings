@@ -1,3 +1,4 @@
 "CFBundleDisplayName" = "Volta";
 "CFBundleName" = "Volta";
 "NSAppleEventsUsageDescription" = "Volta changes Low Power Mode only when you ask it to.";
+"NSBluetoothAlwaysUsageDescription" = "Volta shows the battery level of your connected iPhone, iPad and other Bluetooth devices.";

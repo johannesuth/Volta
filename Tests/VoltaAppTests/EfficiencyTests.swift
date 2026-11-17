@@ -108,4 +108,9 @@ final class EfficiencyTests: XCTestCase {
         XCTAssertGreaterThan(widest, 0)
         XCTAssertLessThanOrEqual(widest, 64, "a full app icon keeps every size up to 1024 px in memory")
     }
+
+    func testAppEnergyRefreshesEveryFiveSeconds() {
+        XCTAssertEqual(PowerLedger.refreshInterval, .seconds(5))
+    }
+
 }

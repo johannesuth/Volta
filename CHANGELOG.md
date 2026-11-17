@@ -2,6 +2,24 @@
 
 All notable changes to Volta are recorded here. Dates use ISO 8601.
 
+## [2.4.2] — 2026-11-17
+
+### Added
+- **iPhone and iPad battery** in Accessories. Volta reads the standard Bluetooth Battery Service of devices that are already connected to the Mac (it never scans or advertises) and subscribes, so iOS pushes new values. Devices that `system_profiler` already reports are not listed twice. macOS asks once for Bluetooth access, only after the introduction.
+- **Action card** at the foot of the panel: Low Power Mode (switch), App Settings… (⌘,), Battery Settings… and Quit Volta (⌘Q) with the version number, each on its own row with dividers.
+
+### Changed
+- Every icon next to a text sits in its own small rounded badge: tinted surface, fine coloured frame, a bright symbol. Each section and action has its own calm colour; quitting is the one red action.
+- The settings gear left the panel header; App Settings… lives in the action card.
+- The Energy Use list refreshes every 5 seconds (was 2.5).
+
+### Fixed
+- The disk image no longer marks Volta.app with a hidden-extension Finder flag. That flag broke the strict signature check of the app inside the image and could make macOS call a downloaded copy damaged. `make-dmg.sh` now mounts the finished image and refuses to finish unless the app inside passes `codesign --verify --deep --strict`.
+
+### Verification
+- `swift test`: 97 tests passed (83 app, 14 language core), including Bluetooth battery parsing and merging, the action card, badge colours and a render test that badges are framed and filled in dark and light mode.
+- Checked live: the connected iPhone shows 82 % in Accessories; badges and dividers are clearly visible.
+
 ## [2.4.1] — 2026-11-17
 
 ### Changed

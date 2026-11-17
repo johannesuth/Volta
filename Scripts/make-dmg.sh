@@ -37,4 +37,18 @@ if [[ -n "${VOLTA_SIGN_IDENTITY:-}" && "${VOLTA_SIGN_IDENTITY}" != "-" ]]; then
   codesign --force --sign "$VOLTA_SIGN_IDENTITY" --timestamp "$OUT"
 fi
 hdiutil verify "$OUT" >/dev/null
-print "Disk image: $OUT"
+
+# The app inside the image must pass the same strict signature check as the built app; extended
+# attributes such as FinderInfo would make macOS report it as damaged after download.
+MOUNT=$(mktemp -d)
+hdiutil attach -nobrowse -readonly -mountpoint "$MOUNT" "$OUT" >/dev/null
+trap 'hdiutil detach "$MOUNT" -quiet 2>/dev/null; rmdir "$MOUNT" 2>/dev/null' EXIT
+codesign --verify --deep --strict "$MOUNT/Volta.app"
+if xattr -r "$MOUNT/Volta.app" | grep -q "com.apple.FinderInfo\|com.apple.ResourceFork"; then
+  print "error: Volta.app in the disk image carries Finder metadata" >&2
+  exit 1
+fi
+hdiutil detach "$MOUNT" -quiet
+trap - EXIT
+rmdir "$MOUNT"
+print "Disk image: $OUT (app inside passes strict signature check)"

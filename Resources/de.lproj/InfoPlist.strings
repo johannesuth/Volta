@@ -1,3 +1,4 @@
 "CFBundleDisplayName" = "Volta";
 "CFBundleName" = "Volta";
 "NSAppleEventsUsageDescription" = "Volta ändert den Stromsparmodus nur, wenn du es ausdrücklich anforderst.";
+"NSBluetoothAlwaysUsageDescription" = "Volta zeigt den Akkustand deines verbundenen iPhones, iPads und anderer Bluetooth-Geräte.";

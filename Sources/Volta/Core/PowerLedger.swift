@@ -63,13 +63,16 @@ final class PowerLedger {
 
     private init() {}
 
+    /// How often the Energy Use list is measured while it is on screen.
+    nonisolated static let refreshInterval: Duration = .seconds(5)
+
     func watch() -> Telemetry.Lease {
         holders += 1
         if loop == nil {
             loop = Task { [weak self] in
                 while !Task.isCancelled {
                     await self?.tick()
-                    try? await Task.sleep(for: .seconds(2.5))
+                    try? await Task.sleep(for: Self.refreshInterval)
                 }
             }
         }

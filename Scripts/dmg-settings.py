@@ -14,7 +14,8 @@ size = None
 
 files = [application]
 symlinks = {"Applications": "/Applications"}
-hide_extensions = [appname]
+# No hide_extensions: it sets a FinderInfo flag on Volta.app, which breaks strict signature checks.
+# Finder hides the .app extension of applications anyway.
 
 icon = defines.get("icon")  # noqa: F821
 background = defines["background"]  # noqa: F821

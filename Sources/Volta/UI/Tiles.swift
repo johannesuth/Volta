@@ -28,7 +28,7 @@ struct DropdownRoot: View {
                 case .apps: AppsTile()
                 }
             }
-            DockBar(dismiss: dismiss)
+            ActionCard(openPreferences: openPreferences, dismiss: dismiss)
         }
         .padding(dim(8))
         .frame(width: dim(Dim.panelWidth))
@@ -63,9 +63,6 @@ private struct Masthead: View {
                 store.c.stickyDropdown.toggle()
             }
             .help(Copy.text("Fenster offen halten", "Keep panel open"))
-            iconButton("gearshape", action: openPreferences)
-                .help(Copy.text("Einstellungen (⌘,)", "Settings (⌘,)"))
-                .keyboardShortcut(",", modifiers: .command)
         }
         .padding(.horizontal, dim(4))
         .padding(.top, dim(2))
@@ -382,10 +379,7 @@ private struct GadgetTile: View {
     private func row(_ g: Gadget) -> some View {
         let tint = Hue.level(g.lowest)
         return HStack(spacing: dim(10)) {
-            Image(systemName: g.family.sfSymbol)
-                .font(dim.text(12, .medium))
-                .foregroundStyle(Hue.accent)
-                .frame(width: dim(28), height: dim(28))
+            IconBadge(symbol: g.family.sfSymbol, hue: TileKind.gadgets.badgeHue, size: dim(24))
             VStack(alignment: .leading, spacing: dim(4)) {
                 HStack {
                     Text(g.name).font(dim.text(12, .medium)).lineLimit(1)
@@ -497,38 +491,132 @@ extension View {
 
 // MARK: - Dock
 
-private struct DockBar: View {
+/// The actions at the foot of the panel, each on its own row of one card.
+enum PanelAction: CaseIterable {
+    case lowPower, appSettings, batterySettings, quit
+
+    func title(language: AppLanguage) -> String {
+        switch self {
+        case .lowPower: language.localized(german: "Stromsparmodus", english: "Low Power Mode")
+        case .appSettings: language.localized(german: "App-Einstellungen …", english: "App Settings…")
+        case .batterySettings: language.localized(german: "Batterie-Einstellungen …", english: "Battery Settings…")
+        case .quit: language.localized(german: "Volta beenden", english: "Quit Volta")
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .lowPower: "leaf.fill"
+        case .appSettings: "gearshape.fill"
+        case .batterySettings: "battery.75percent"
+        case .quit: "power"
+        }
+    }
+
+    var hue: Color {
+        switch self {
+        case .lowPower: Hue.amber
+        case .appSettings: Hue.slate
+        case .batterySettings: Hue.mint
+        case .quit: Hue.alarm
+        }
+    }
+
+    /// Rows that open a window show an arrow, like the macOS menus that lead somewhere.
+    var opensWindow: Bool { self == .appSettings || self == .batterySettings }
+}
+
+private struct ActionCard: View {
+    var openPreferences: () -> Void
     var dismiss: () -> Void
     @Environment(\.dim) private var dim
     @State private var working = false
     private let telemetry = Telemetry.shared
 
     var body: some View {
-        let eco = telemetry.now.lowPower
-        HStack(spacing: dim(8)) {
-            Button {
-                working = true
-                EcoMode.set(!eco) { _ in working = false; telemetry.pull() }
-            } label: {
-                Label(eco ? Copy.text("Energiesparen an", "Low Power On") : Copy.text("Energiesparen", "Low Power Mode"),
-                      systemImage: eco ? "leaf.fill" : "leaf")
-                    .font(dim.text(10.5, .medium))
-                    .foregroundStyle(eco ? Hue.accent : .secondary)
+        Tile {
+            VStack(spacing: 0) {
+                ForEach(Array(PanelAction.allCases.enumerated()), id: \.offset) { index, action in
+                    if index > 0 {
+                        Rectangle().fill(.primary.opacity(0.16)).frame(height: 1)
+                            .padding(.leading, dim(28))
+                    }
+                    row(action)
+                }
             }
-            .buttonStyle(.plain)
-            .disabled(working)
-            Spacer()
-            Button {
-                dismiss()
-                Shortcuts.batteryPane()
-            } label: {
-                Label(Copy.text("Batterie", "Battery"), systemImage: "battery.100percent")
-                    .font(dim.text(10.5, .medium))
-                    .foregroundStyle(.secondary)
-            }
-            .buttonStyle(.plain)
+            .padding(.vertical, dim(-2))
         }
-        .padding(.horizontal, dim(4))
-        .padding(.top, dim(1))
+    }
+
+    @ViewBuilder
+    private func row(_ action: PanelAction) -> some View {
+        let label = HStack(spacing: dim(8)) {
+            IconBadge(symbol: action.symbol, hue: action.hue, size: dim(20))
+            Text(action.title(language: Copy.language))
+                .font(dim.text(11.5, .medium))
+                .foregroundStyle(.primary.opacity(0.88))
+                .lineLimit(1)
+            Spacer(minLength: dim(4))
+            trailing(action)
+        }
+        .padding(.vertical, dim(4.5))
+        .contentShape(Rectangle())
+
+        switch action {
+        case .lowPower:
+            let eco = telemetry.now.lowPower
+            Toggle(isOn: Binding(get: { eco }, set: { on in
+                working = true
+                EcoMode.set(on) { _ in working = false; telemetry.pull() }
+            })) { label }
+            .toggleStyle(RowSwitch(working: working))
+            .disabled(working)
+        case .appSettings:
+            Button(action: openPreferences) { label }
+                .buttonStyle(RowPress())
+                .keyboardShortcut(",", modifiers: .command)
+        case .batterySettings:
+            Button { dismiss(); Shortcuts.batteryPane() } label: { label }
+                .buttonStyle(RowPress())
+        case .quit:
+            Button { NSApp.terminate(nil) } label: { label }
+                .buttonStyle(RowPress())
+                .keyboardShortcut("q", modifiers: .command)
+        }
+    }
+
+    @ViewBuilder
+    private func trailing(_ action: PanelAction) -> some View {
+        if action.opensWindow {
+            Image(systemName: "chevron.right")
+                .font(dim.text(9, .semibold))
+                .foregroundStyle(.tertiary)
+        } else if action == .quit, let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String {
+            Text("v\(version)")
+                .font(dim.number(9.5, .medium))
+                .foregroundStyle(.tertiary)
+        }
+    }
+}
+
+/// A row that dims slightly while pressed.
+private struct RowPress: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label.opacity(configuration.isPressed ? 0.6 : 1)
+    }
+}
+
+/// The Low Power row: its label plus a small switch at the trailing edge.
+private struct RowSwitch: ToggleStyle {
+    var working: Bool
+    func makeBody(configuration: Configuration) -> some View {
+        HStack(spacing: 0) {
+            configuration.label
+            Toggle("", isOn: configuration.$isOn)
+                .labelsHidden()
+                .toggleStyle(.switch)
+                .controlSize(.mini)
+                .opacity(working ? 0.5 : 1)
+        }
     }
 }

@@ -5,7 +5,7 @@ import Foundation
 import Observation
 
 enum GadgetFamily: String, Codable, CaseIterable {
-    case buds, overEar, speaker, mouse, keyboard, trackpad, controller, phone, watch, pen, misc
+    case buds, overEar, speaker, mouse, keyboard, trackpad, controller, phone, tablet, watch, pen, misc
 
     var sfSymbol: String {
         switch self {
@@ -17,6 +17,7 @@ enum GadgetFamily: String, Codable, CaseIterable {
         case .trackpad: "rectangle.and.hand.point.up.left.fill"
         case .controller: "gamecontroller.fill"
         case .phone: "iphone.gen3"
+        case .tablet: "ipad"
         case .watch: "applewatch.side.right"
         case .pen: "pencil.tip"
         case .misc: "wave.3.right"
@@ -35,7 +36,7 @@ enum GadgetFamily: String, Codable, CaseIterable {
             ("trackpad", .trackpad), ("mouse", .mouse), ("maus", .mouse),
             ("keyboard", .keyboard), ("tastatur", .keyboard),
             ("gamepad", .controller), ("controller", .controller), ("dualsense", .controller),
-            ("phone", .phone), ("watch", .watch), ("pencil", .pen), ("stylus", .pen),
+            ("ipad", .tablet), ("phone", .phone), ("watch", .watch), ("pencil", .pen), ("stylus", .pen),
         ]
         return table.first { probe.contains($0.0) }?.1 ?? .misc
     }
@@ -122,8 +123,16 @@ final class GadgetHub {
     @ObservationIgnored private var loop: Task<Void, Never>?
     @ObservationIgnored private var boosted = 0
     @ObservationIgnored private let file = ConfigStore.shared.folder.appending(path: "gadgets.json")
+    /// iPhone and iPad batteries over Bluetooth Low Energy, joined with the profiler's list.
+    @ObservationIgnored private let link = LEBatteryReader()
+    @ObservationIgnored private var lastProfiler: [Gadget] = []
+    /// True when Bluetooth access was declined, so iPhones and iPads cannot be read.
+    private(set) var bluetoothDenied = false
 
     private init() {
+        link.onChange = { [weak self] in
+            MainActor.assumeIsolated { self?.bluetoothChanged() }
+        }
         if let data = try? Data(contentsOf: file), let saved = try? JSONDecoder().decode([Gadget].self, from: data) {
             memory = Dictionary(saved.map { g in var g = g; g.connected = false; return (g.id, g) }, uniquingKeysWith: { a, _ in a })
             all = arrange(Array(memory.values))
@@ -160,14 +169,45 @@ final class GadgetHub {
         loop = Task { [weak self] in
             while !Task.isCancelled {
                 let live = (self?.boosted ?? 0) > 0
-                if live || Self.needsBackgroundScan(ConfigStore.shared.c) { await self?.rescan() }
+                if live || Self.needsBackgroundScan(ConfigStore.shared.c) {
+                    // macOS asks for Bluetooth access on first use; not while the introduction is open.
+                    if ConfigStore.shared.c.onboarded { self?.link.start() }
+                    await self?.rescan()
+                } else {
+                    self?.link.stop()
+                }
                 try? await Task.sleep(for: .seconds(live ? Self.liveInterval : Self.backgroundInterval))
             }
         }
     }
 
+    /// Profiler accessories plus Bluetooth Low Energy readings. A device that the profiler already reports
+    /// with a battery level (matched by name) is not added twice.
+    nonisolated static func merge(profiler: [Gadget], bluetooth: [LEBattery.Reading], now: Date) -> [Gadget] {
+        func key(_ name: String) -> String { name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() }
+        let known = Set(profiler.map { key($0.name) })
+        var out = profiler
+        for reading in bluetooth.sorted(by: { $0.name < $1.name }) where !known.contains(key(reading.name)) {
+            out.append(Gadget(id: "le:\(reading.id.uuidString)", name: reading.name,
+                              family: .infer(minorType: nil, name: reading.name),
+                              single: reading.level, leftBud: nil, rightBud: nil, caseLevel: nil,
+                              connected: true, lastSeen: now))
+        }
+        return out
+    }
+
     func rescan() async {
-        let fresh = await scanner.scan()
+        lastProfiler = await scanner.scan()
+        apply(Self.merge(profiler: lastProfiler, bluetooth: Array(link.readings.values), now: .now))
+    }
+
+    private func bluetoothChanged() {
+        bluetoothDenied = link.denied
+        apply(Self.merge(profiler: lastProfiler, bluetooth: Array(link.readings.values), now: .now))
+    }
+
+    private func apply(_ fresh: [Gadget]) {
+        bluetoothDenied = link.denied
         let liveIDs = Set(fresh.map(\.id))
         for var g in fresh {
             // AirPods report the case only while it is open; keep the last known value.

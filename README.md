@@ -6,7 +6,7 @@
 
 **Battery, health and energy use, right in the macOS menu bar.**
 
-[![Download Volta](https://img.shields.io/badge/Download-Volta%202.4.1-4C5B8C?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/johannesuth/volta/releases/latest)
+[![Download Volta](https://img.shields.io/badge/Download-Volta%202.4.2-4C5B8C?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/johannesuth/volta/releases/latest)
 
 ![macOS 15 or later](https://img.shields.io/badge/macOS-15%2B-6878A8?logo=apple&logoColor=white)
 ![Apple silicon and Intel](https://img.shields.io/badge/Apple%20silicon%20%2B%20Intel-universal-6878A8)
@@ -33,10 +33,11 @@ The macOS battery menu tells you a percentage. Volta tells you the rest: how lon
 - **The dashboard at a glance.** Charge and time remaining, including the clock time (“until about 5:11 PM”). Battery health with maximum capacity, charge cycles and temperature. The apps using the most energy, shown as a simple share in percent.
 - **A history chart that reads itself.** Battery phases in blue, charging in green, over 6 hours, 24 hours or 7 days. Below it: average discharge per hour and the expected runtime on a full charge.
 - **Alerts you can preview.** A reminder when the battery runs low and a notice when your charge target is reached. Pick a card, a card with a glowing screen edge, or a real macOS notification that also lands in Notification Center. The color follows the charge level or uses one of six calm colors, and Settings shows a live preview of every change. Cards stay for five seconds, then fade out on their own.
-- **Accessories.** Battery levels of AirPods, mice and keyboards when macOS reports them, with an optional low-battery alert.
+- **Accessories.** Battery levels of your connected iPhone and iPad as well as AirPods, mice and keyboards, with an optional low-battery alert. iPhones and iPads are read over Bluetooth, so macOS asks once whether Volta may use Bluetooth.
+- **Everything at hand.** The panel ends with its own card for Low Power Mode, Volta's settings, macOS Battery settings and quitting Volta.
 - **Everyday settings that work.** Open at login (listed as “Volta” in Login Items), a global shortcut (⌃⌥V by default), Automatic, Light or Dark appearance, an accent color, °C or °F, and a pinned dashboard that stays open while you work.
 - **Light on your battery.** While the dashboard is closed, Volta reacts to battery changes macOS reports and otherwise checks once a minute: about 0.02 % CPU and around 35 MB of memory.
-- **Private by design.** Volta reads battery data from macOS and stores its history in `~/Library/Application Support/Volta`. It makes no network connections, needs no account and sends no analytics.
+- **Private by design.** Volta reads battery data from macOS and stores its history in `~/Library/Application Support/Volta`. It makes no network connections, needs no account and sends no analytics. Bluetooth is only used to read the battery level that already connected devices share with your Mac.
 
 Advanced extras are off by default: power flow (adapter, battery and system watts) and technical battery values (mAh, voltage, current).
 
@@ -54,7 +55,7 @@ A short setup in three steps: pick English or German, allow **Open at login** an
 
 <img src="docs/screenshots/installer.png" alt="The Volta disk image window: drag Volta onto Applications" width="58%" align="right" />
 
-1. Download **Volta-2.4.1.dmg** from the [latest release](https://github.com/johannesuth/volta/releases/latest).
+1. Download **Volta-2.4.2.dmg** from the [latest release](https://github.com/johannesuth/volta/releases/latest).
 2. Open it and drag **Volta** onto **Applications**.
 3. Eject the **Volta** disk: click ⏏ next to it in the Finder sidebar, or drag it to the Trash.
 4. Open Volta from your Applications folder.
@@ -78,14 +79,15 @@ brew tap johannesuth/volta
 brew install --cask volta
 ```
 
-**Uninstall:** right-click the menu-bar battery and choose **Quit Volta**, move it from Applications to the Trash and, if you like, delete `~/Library/Application Support/Volta`.
+**Uninstall:** choose **Quit Volta** at the bottom of the dashboard (or right-click the menu-bar battery), move it from Applications to the Trash and, if you like, delete `~/Library/Application Support/Volta`.
 
 ## Usage
 
 | | |
 |---|---|
 | Open the dashboard | Click the menu-bar battery or press ⌃⌥V |
-| Open Settings | Gear icon in the dashboard, or right-click the menu-bar battery |
+| Open Settings | **App Settings…** at the bottom of the dashboard, ⌘, or right-click the menu-bar battery |
+| Quit Volta | **Quit Volta** at the bottom of the dashboard, or ⌘Q while it is open |
 | Expand or collapse a section | Click its title |
 | Keep the dashboard open | Pin icon in the dashboard |
 | Change the chart range | 6 h · 24 h · 7 days above the chart |
@@ -101,7 +103,7 @@ You need macOS 15 or later and Xcode.
 git clone https://github.com/johannesuth/volta.git
 cd volta
 export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
-swift test                          # 88 unit tests
+swift test                          # 97 unit tests
 ./Scripts/build-app.sh              # build/Volta.app and dist/Volta-<version>.dmg
 ./Scripts/build-app.sh --install    # also replaces /Applications/Volta.app and starts it
 ```
@@ -135,9 +137,9 @@ For the maintainer. Requires a paid Apple Developer Program membership.
 4. Publish:
 
    ```sh
-   git tag v2.4.1 && git push origin v2.4.1
-   gh release create v2.4.1 dist/Volta-2.4.1.dmg dist/SHA256SUMS.txt \
-     --title 'Volta 2.4.1' --notes-file docs/releases/2.4.1.md
+   git tag v2.4.2 && git push origin v2.4.2
+   gh release create v2.4.2 dist/Volta-2.4.2.dmg dist/SHA256SUMS.txt \
+     --title 'Volta 2.4.2' --notes-file docs/releases/2.4.2.md
    ```
 
 See [CHANGELOG.md](CHANGELOG.md) for the version history.

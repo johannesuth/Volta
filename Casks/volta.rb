@@ -1,6 +1,6 @@
 cask "volta" do
-  version "2.4.1"
-  sha256 "851236249ed7008c0c5862227619d59b2490ceca261fed0cceb073953196ffba"
+  version "2.4.2"
+  sha256 "47a9b72163cbbd8e8c8d07d59d9133296bbce47f52aa5c84f97e8bcbbf2d65fe"
 
   url "https://github.com/johannesuth/volta/releases/download/v#{version}/Volta-#{version}.dmg"
   name "Volta"
@@ -9,7 +9,7 @@ cask "volta" do
 
   depends_on macos: ">= :sequoia"
 
-  # The checksum matches the local ad-hoc 2.4.1 build. Replace it with the SHA-256 that
+  # The checksum matches the local ad-hoc 2.4.2 build. Replace it with the SHA-256 that
   # Scripts/sign-notarize.sh prints for the notarized disk image before publishing this Cask.
   app "Volta.app"
 

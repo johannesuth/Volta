@@ -16,6 +16,7 @@ enum Hue {
     static let amber = Color(red: 0.83, green: 0.66, blue: 0.39)
     static let coral = Color(red: 0.78, green: 0.48, blue: 0.45)
     static let blush = Color(red: 0.74, green: 0.54, blue: 0.64)
+    static let slate = Color(red: 0.58, green: 0.61, blue: 0.68)
 
     static let good = mint
     static let warn = amber
@@ -110,6 +111,42 @@ extension EnvironmentValues {
 // MARK: - Building blocks
 
 /// A section of the dropdown: a softly rounded card with a coloured icon, caption and content.
+/// Each section has its own calm colour, so its badge is easy to tell apart at a glance.
+extension TileKind {
+    var badgeHue: Color {
+        switch self {
+        case .charge: Hue.mint
+        case .balance: Hue.sky
+        case .trend: Hue.iris
+        case .vitals: Hue.blush
+        case .gadgets: Hue.lagoon
+        case .apps: Hue.amber
+        }
+    }
+}
+
+/// An icon in a small rounded square: tinted surface, fine coloured frame, symbol in the same colour.
+struct IconBadge: View {
+    @Environment(\.colorScheme) private var scheme
+    let symbol: String
+    let hue: Color
+    var size: CGFloat = 20
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: size * 0.3, style: .continuous)
+        let dark = scheme == .dark
+        // On a dark panel the symbol is lifted towards white so it reads clearly; on a light one it is deepened.
+        let glyph = dark ? hue.mix(with: .white, by: 0.35) : hue.mix(with: .black, by: 0.25)
+        Image(systemName: symbol)
+            .font(.system(size: size * 0.54, weight: .semibold))
+            .foregroundStyle(glyph)
+            .frame(width: size, height: size)
+            .background(shape.fill(hue.opacity(dark ? 0.26 : 0.18)))
+            .overlay(shape.strokeBorder(dark ? hue.mix(with: .white, by: 0.15).opacity(0.75) : hue.opacity(0.7),
+                                        lineWidth: max(0.8, size * 0.045)))
+    }
+}
+
 struct Tile<Content: View>: View {
     @Environment(\.dim) private var dim
     @Environment(\.tileExpansion) private var expansion
@@ -137,11 +174,8 @@ struct Tile<Content: View>: View {
                         next.toggle(kind)
                         expansion.wrappedValue = next
                     } label: {
-                        HStack(spacing: dim(7)) {
-                            Image(systemName: kind.icon)
-                                .font(dim.text(10, .medium))
-                                .foregroundStyle(tint)
-                                .frame(width: dim(16))
+                        HStack(spacing: dim(8)) {
+                            IconBadge(symbol: kind.icon, hue: kind.badgeHue, size: dim(20))
                             Text(kind.title)
                                 .font(dim.text(11.5, .semibold))
                                 .foregroundStyle(.primary.opacity(0.85))

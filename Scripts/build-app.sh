@@ -7,7 +7,7 @@ cd "$(dirname "$0")/.."
 export DEVELOPER_DIR=${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}
 
 VERSION=${VOLTA_VERSION:-$(<VERSION)}
-BUILD_NUMBER=${VOLTA_BUILD_NUMBER:-36}
+BUILD_NUMBER=${VOLTA_BUILD_NUMBER:-37}
 VERSION_PATTERN='^[0-9]+\.[0-9]+\.[0-9]+([+-][0-9A-Za-z.-]+)?$'
 if ! [[ "$VERSION" =~ $VERSION_PATTERN ]]; then
   print -u2 "Invalid VOLTA_VERSION: expected a version such as 2.1.0."
@@ -80,6 +80,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
     <key>CFBundleURLSchemes</key><array><string>volta</string></array>
   </dict></array>
   <key>NSAppleEventsUsageDescription</key><string>Volta changes Low Power Mode only when you ask it to.</string>
+  <key>NSBluetoothAlwaysUsageDescription</key><string>Volta shows the battery level of your connected iPhone, iPad and other Bluetooth devices.</string>
 </dict>
 </plist>
 PLIST
