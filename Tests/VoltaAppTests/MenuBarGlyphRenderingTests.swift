@@ -38,7 +38,7 @@ final class MenuBarGlyphRenderingTests: XCTestCase {
     }
 
     func testMenuBarArtworkIsRedrawnAtTheDisplayDensityOnWholePoints() {
-        let image = GlyphPainter.image(snapshot: battery(level: 75), clock: nil, cfg: config(tint: .blue),
+        let image = GlyphPainter.image(snapshot: battery(level: 75), clock: nil, cfg: config(tint: .level),
                                        darkBar: true, badges: [])
 
         XCTAssertFalse(image.representations.isEmpty)
@@ -49,7 +49,7 @@ final class MenuBarGlyphRenderingTests: XCTestCase {
     }
 
     func testColoredBatteryNumberIsLargeAndHighContrastOnRetina() {
-        let image = GlyphPainter.image(snapshot: battery(level: 75), clock: nil, cfg: config(tint: .blue),
+        let image = GlyphPainter.image(snapshot: battery(level: 75), clock: nil, cfg: config(tint: .level),
                                        darkBar: true, badges: [])
         let rep = pixels(of: image, scale: 2)
 
@@ -71,9 +71,59 @@ final class MenuBarGlyphRenderingTests: XCTestCase {
 
         XCTAssertGreaterThan(digitCount, 0)
         XCTAssertGreaterThan(fillCount, 0)
-        XCTAssertGreaterThanOrEqual(digitBottom - digitTop + 1, 16,
-                                    "Digits should be at least 8 pt tall, matching the system battery figure.")
+        XCTAssertGreaterThanOrEqual(digitBottom - digitTop + 1, 15,
+                                    "Digits should be at least 7.5 pt tall so they stay legible from a distance.")
         XCTAssertGreaterThan(fillLight / Double(max(fillCount, 1)) - digitLight / Double(max(digitCount, 1)), 0.45)
+    }
+
+    func testBatteryIsSlightlySmallerThanTheSystemSizedVersion() {
+        // 2.1.4–2.2.0 drew a 32 × 15 pt body with a 12.5 pt number; it read as too large next to the clock.
+        let body = GlyphPainter.Metrics.cell
+        XCTAssertEqual(body, CGSize(width: 30, height: 14))
+        XCTAssertEqual(GlyphPainter.Metrics.number, 11.5)
+        XCTAssertLessThan(GlyphPainter.Metrics.numberFull, GlyphPainter.Metrics.number)
+
+        let image = GlyphPainter.image(snapshot: battery(level: 64), clock: nil, cfg: config(tint: .level),
+                                       darkBar: true, badges: [])
+        XCTAssertLessThanOrEqual(image.size.width, 35, "body, nub and 1 pt padding per side (was 37 pt)")
+        XCTAssertEqual(image.size.height, GlyphPainter.Metrics.height)
+    }
+
+    func testLevelColorsAreLightGreenYellowAndRed() {
+        func hueDegrees(_ color: NSColor) -> CGFloat { (color.usingColorSpace(.deviceRGB)?.hueComponent ?? 0) * 360 }
+        let green = GlyphPainter.levelColor(.high), yellow = GlyphPainter.levelColor(.medium), red = GlyphPainter.levelColor(.low)
+
+        XCTAssertTrue((100...150).contains(hueDegrees(green)), "green hue \(hueDegrees(green))")
+        XCTAssertTrue((40...58).contains(hueDegrees(yellow)), "yellow hue \(hueDegrees(yellow))")
+        XCTAssertTrue(hueDegrees(red) < 12 || hueDegrees(red) > 348, "red hue \(hueDegrees(red))")
+        for color in [green, yellow, red] {
+            XCTAssertGreaterThan(luminance(color.usingColorSpace(.deviceRGB)!), 0.55, "level colours should be light")
+        }
+    }
+
+    func testNumberStaysReadableOnBothSidesOfTheFillEdge() {
+        // At 50 % the "5" sits on the coloured fill and the "0" on the empty part of the battery.
+        let image = GlyphPainter.image(snapshot: battery(level: 50), clock: nil, cfg: config(tint: .level),
+                                       darkBar: true, badges: [])
+        let rep = pixels(of: image, scale: 2)
+        let body = GlyphPainter.Metrics.cell
+        let edge = Int(((1 + body.width / 2) * 2).rounded())
+        let top = Int(((GlyphPainter.Metrics.height - body.height) / 2 * 2).rounded()) + 4
+        let bottom = top + Int(body.height * 2) - 8
+
+        var darkOnFill = 0, lightOnTrack = 0
+        for y in top..<bottom {
+            for x in 6..<(edge - 2) {
+                guard let c = rep.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB), c.alphaComponent > 0.95 else { continue }
+                if luminance(c) < 0.2 { darkOnFill += 1 }
+            }
+            for x in (edge + 2)..<(Int(body.width * 2) - 4) {
+                guard let c = rep.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB), c.alphaComponent > 0.95 else { continue }
+                if luminance(c) > 0.85 { lightOnTrack += 1 }
+            }
+        }
+        XCTAssertGreaterThan(darkOnFill, 30, "digits over the light fill must be dark")
+        XCTAssertGreaterThan(lightOnTrack, 30, "digits over the empty part must be white")
     }
 
     func testMonochromeNumberIsCutOutOfAnOpaqueBattery() {

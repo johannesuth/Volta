@@ -210,7 +210,7 @@ private struct OnboardingView: View {
                 .toggleStyle(.switch)
                 .frame(maxWidth: 270)
                 .padding(.top, 10)
-            Text("You can adjust alerts, appearance and measurements in Settings at any time.")
+            Text("You can change alerts, appearance and dashboard sections in Settings at any time.")
                 .font(.system(size: 11))
                 .foregroundStyle(.white.opacity(0.48))
                 .multilineTextAlignment(.center)

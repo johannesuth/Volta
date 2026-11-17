@@ -26,8 +26,8 @@ final class TileExpansionTests: XCTestCase {
         XCTAssertFalse(empty.collapseOldest())
     }
 
-    func testBatteryHealthIsOpenByDefaultAndHistoryStaysCollapsed() {
-        XCTAssertEqual(Config().expansion.openTiles, [.vitals])
+    func testHealthAndAppEnergyAreOpenByDefaultAndHistoryStaysCollapsed() {
+        XCTAssertEqual(Config().expansion.openTiles, [.vitals, .apps])
         XCTAssertFalse(Config().expansion.contains(.trend))
     }
 }

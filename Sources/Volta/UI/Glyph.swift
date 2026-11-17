@@ -10,10 +10,13 @@ struct GlyphBadge: Hashable, Sendable {
 /// Colours for one rendering of the menu-bar artwork, chosen for the current bar appearance.
 struct GlyphInk: @unchecked Sendable {
     var template: Bool
+    /// White on a dark menu bar, black on a light one: outlines, text and symbols.
     var neutral: NSColor
+    /// The charged part of the battery.
     var fill: NSColor
-    var caption: NSColor
-    var figure: NSColor
+    /// The number where it sits on the fill, and where it sits on the empty part.
+    var figureOnFill: NSColor
+    var figureOnTrack: NSColor
     var trackAlpha: CGFloat
 }
 
@@ -24,47 +27,49 @@ enum GlyphPainter {
     enum Metrics {
         static let height: CGFloat = 22
         static let spacing: CGFloat = 4
-        static let cell = CGSize(width: 32, height: 15)
-        static let bareCell = CGSize(width: 25, height: 12)
-        static let cellRadius: CGFloat = 4.5
-        static let nub = CGSize(width: 2, height: 5)
+        static let cell = CGSize(width: 30, height: 14)
+        static let bareCell = CGSize(width: 23, height: 11)
+        static let cellRadius: CGFloat = 4
+        static let nub = CGSize(width: 2, height: 4.5)
         static let nubGap: CGFloat = 1
-        static let number: CGFloat = 12
-        static let numberFull: CGFloat = 11
+        static let number: CGFloat = 11.5
+        static let numberFull: CGFloat = 10
         static let caption: CGFloat = 13
         static let badgeText: CGFloat = 11.5
         static let ring: CGFloat = 18
     }
 
-    static func color(for tint: GlyphTint) -> NSColor? {
-        switch tint {
-        case .blue: NSColor(srgbRed: 0.42, green: 0.63, blue: 0.82, alpha: 1)
-        case .green: NSColor(srgbRed: 0.41, green: 0.69, blue: 0.55, alpha: 1)
-        case .teal: NSColor(srgbRed: 0.36, green: 0.66, blue: 0.70, alpha: 1)
-        case .violet: NSColor(srgbRed: 0.52, green: 0.56, blue: 0.77, alpha: 1)
-        case .amber: NSColor(srgbRed: 0.83, green: 0.66, blue: 0.39, alpha: 1)
-        case .rose: NSColor(srgbRed: 0.74, green: 0.54, blue: 0.64, alpha: 1)
-        case .status, .monochrome: nil
+    /// Soft, light status colours: green above 50 %, yellow down to 21 %, red at 20 % or less.
+    static func levelColor(_ band: LevelBand) -> NSColor {
+        switch band {
+        case .high: NSColor(srgbRed: 0.49, green: 0.85, blue: 0.52, alpha: 1)
+        case .medium: NSColor(srgbRed: 0.99, green: 0.84, blue: 0.36, alpha: 1)
+        case .low: NSColor(srgbRed: 0.98, green: 0.50, blue: 0.48, alpha: 1)
         }
     }
 
-    static func ink(selection: GlyphTint, mode: FlowMode, level: Int, darkBar: Bool) -> GlyphInk {
-        let figure = NSColor(srgbRed: 0.06, green: 0.07, blue: 0.09, alpha: 1)
-        guard let tint = GlyphTintResolver.resolve(selection, mode: mode, level: level),
-              let base = color(for: tint) else {
-            return GlyphInk(template: true, neutral: .black, fill: .black, caption: .black, figure: .black, trackAlpha: 0.35)
+    static func fillColor(for tint: GlyphTint, level: Int) -> NSColor? {
+        switch tint {
+        case .level: levelColor(LevelBand(level: level))
+        case .accent: NSColor(Hue.accent)
+        case .monochrome: nil
         }
-        if darkBar {
-            let bright = base.blended(withFraction: 0.2, of: .white) ?? base
-            return GlyphInk(template: false, neutral: .white, fill: bright, caption: bright, figure: figure, trackAlpha: 0.45)
+    }
+
+    static func ink(selection: GlyphTint, level: Int, darkBar: Bool) -> GlyphInk {
+        guard let fill = fillColor(for: selection, level: level)?.usingColorSpace(.sRGB) else {
+            return GlyphInk(template: true, neutral: .black, fill: .black, figureOnFill: .black, figureOnTrack: .black, trackAlpha: 0.35)
         }
-        let deep = base.blended(withFraction: 0.35, of: .black) ?? base
-        return GlyphInk(template: false, neutral: .black, fill: base, caption: deep, figure: figure, trackAlpha: 0.22)
+        let lightFill = 0.2126 * fill.redComponent + 0.7152 * fill.greenComponent + 0.0722 * fill.blueComponent > 0.45
+        let ink = NSColor(srgbRed: 0.07, green: 0.08, blue: 0.09, alpha: 1)
+        return GlyphInk(template: false, neutral: darkBar ? .white : .black, fill: fill,
+                        figureOnFill: lightFill ? ink : .white, figureOnTrack: .white,
+                        trackAlpha: darkBar ? 0.28 : 0.5)
     }
 
     static func image(snapshot s: PowerSnapshot, clock: String?, cfg: Config, darkBar: Bool,
                       badges: [GlyphBadge]) -> NSImage {
-        let ink = ink(selection: cfg.glyphTint, mode: s.mode, level: s.level, darkBar: darkBar)
+        let ink = ink(selection: cfg.glyphTint, level: s.level, darkBar: darkBar)
         let watts: String? = cfg.glyphWatts
             ? String(format: "%.0f W", abs(s.onMains ? s.mainsWatts : s.packWatts)) : nil
         let drawing = GlyphDrawing(level: s.level, mode: s.mode, style: cfg.glyph, ink: ink, clock: clock,
@@ -175,7 +180,7 @@ struct GlyphDrawing: @unchecked Sendable {
         case .bareCell:
             drawCell(size: M.bareCell, number: false, at: x, midY: midY, in: context, snap: snap)
         case .caption(let text):
-            drawCaption(text, size: M.caption, weight: .medium, color: ink.template ? .black : ink.caption,
+            drawCaption(text, size: M.caption, weight: .medium, color: ink.neutral,
                         x: x, midY: midY, in: context, snap: snap)
         case .ring(let number):
             drawRing(number: number, at: x, midY: midY, in: context, snap: snap)
@@ -188,22 +193,32 @@ struct GlyphDrawing: @unchecked Sendable {
         let fraction = CGFloat(min(max(level, 0), 100)) / 100
         if number {
             let shape = NSBezierPath(roundedRect: body, xRadius: M.cellRadius, yRadius: M.cellRadius)
+            let charged = CGRect(x: body.minX, y: body.minY, width: snap(body.width * fraction), height: body.height)
+            let empty = CGRect(x: charged.maxX, y: body.minY, width: body.maxX - charged.maxX, height: body.height)
             ink.neutral.withAlphaComponent(ink.trackAlpha).setFill()
             shape.fill()
             NSGraphicsContext.saveGraphicsState()
-            NSBezierPath(rect: CGRect(x: body.minX, y: body.minY, width: snap(body.width * fraction),
-                                      height: body.height)).addClip()
+            NSBezierPath(rect: charged).addClip()
             ink.fill.setFill()
             shape.fill()
             NSGraphicsContext.restoreGraphicsState()
 
-            let text = "\(level)"
-            let line = makeLine(text, size: level >= 100 ? M.numberFull : M.number, weight: .bold,
-                                color: ink.template ? .black : ink.figure)
-            context.saveGState()
-            if ink.template { context.setBlendMode(.destinationOut) }
-            drawCentered(line, in: body, context: context, snap: snap)
-            context.restoreGState()
+            let size = level >= 100 ? M.numberFull : M.number
+            if ink.template {
+                // Monochrome: the number is cut out of the battery, like the system battery icon.
+                context.saveGState()
+                context.setBlendMode(.destinationOut)
+                drawCentered(makeLine("\(level)", size: size, weight: .bold, color: .black), in: body, context: context, snap: snap)
+                context.restoreGState()
+            } else {
+                // Dark on the light fill, white on the empty part: readable on both sides of the edge.
+                for (area, color) in [(charged, ink.figureOnFill), (empty, ink.figureOnTrack)] where area.width > 0 {
+                    context.saveGState()
+                    context.clip(to: area)
+                    drawCentered(makeLine("\(level)", size: size, weight: .bold, color: color), in: body, context: context, snap: snap)
+                    context.restoreGState()
+                }
+            }
         } else {
             let outline = NSBezierPath(roundedRect: body.insetBy(dx: 0.5, dy: 0.5), xRadius: 3.4, yRadius: 3.4)
             outline.lineWidth = 1
@@ -223,7 +238,7 @@ struct GlyphDrawing: @unchecked Sendable {
 
         if plugged {
             let bolt = boltSize
-            drawSymbol(boltName, pointSize: 9, weight: .black, color: ink.template ? .black : ink.caption,
+            drawSymbol(boltName, pointSize: 9, weight: .black, color: ink.neutral,
                        in: CGRect(x: nub.maxX + 1, y: snap(midY - bolt.height / 2), width: bolt.width, height: bolt.height))
         }
     }

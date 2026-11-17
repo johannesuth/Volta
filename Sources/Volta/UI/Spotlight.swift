@@ -99,7 +99,6 @@ final class Spotlight {
 
     func present(_ n: Notice) {
         dismiss(fade: false)
-        let cfg = ConfigStore.shared.c
         let display = screen
 
         if n.aura {
@@ -113,7 +112,7 @@ final class Spotlight {
             w.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
             w.isReleasedWhenClosed = false
             w.contentView = AuraLayerView(frame: NSRect(origin: .zero, size: display.frame.size),
-                                          tint: NSColor(n.tint), gain: cfg.aura.gain)
+                                          tint: NSColor(n.tint), gain: 0.55)
             w.alphaValue = 0
             w.orderFrontRegardless()
             NSAnimationContext.runAnimationGroup { $0.duration = 0.6; w.animator().alphaValue = 1 }
@@ -123,7 +122,7 @@ final class Spotlight {
         if n.card {
             let size = NSSize(width: 440, height: 160)
             let vf = display.visibleFrame
-            let placement: CardPlacement = cfg.cardPlacement == .smart ? (n.urgent ? .middle : .upper) : cfg.cardPlacement
+            let placement: CardPlacement = n.urgent ? .middle : .upper
             let origin: NSPoint = switch placement {
             case .middle: NSPoint(x: vf.midX - size.width / 2, y: vf.midY - size.height / 2 + 60)
             case .lowerRight: NSPoint(x: vf.maxX - size.width - 12, y: vf.minY + 12)
@@ -137,7 +136,6 @@ final class Spotlight {
             panel.level = .screenSaver
             panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
             panel.isReleasedWhenClosed = false
-            panel.appearance = cfg.look.appearance
             let host = ClickableHost(rootView: NoticeCard(notice: n) { [weak self] in self?.dismiss() })
             host.frame = NSRect(origin: .zero, size: size)
             panel.contentView = host
@@ -145,7 +143,7 @@ final class Spotlight {
             cardWindow = panel
         }
 
-        let seconds = n.lingers ? 60 : cfg.cardSeconds
+        let seconds: Double = n.lingers ? 60 : 8
         expiry = Task { [weak self] in
             try? await Task.sleep(for: .seconds(seconds))
             guard !Task.isCancelled else { return }
@@ -212,7 +210,7 @@ struct NoticeCard: View {
         }
         .padding(.horizontal, 16)
         .frame(width: 400, height: 76)
-        .glassPlate(radius: 20, shade: ConfigStore.shared.c.panelTint)
+        .glassPlate(radius: 20)
         .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(.primary.opacity(0.08), lineWidth: 0.5))
         .shadow(color: .black.opacity(0.18), radius: 16, y: 6)
         .frame(width: 440, height: 160)

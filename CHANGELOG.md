@@ -2,6 +2,30 @@
 
 All notable changes to Volta are recorded here. Dates use ISO 8601.
 
+## [2.2.0] — 2026-11-17
+
+### Added
+- Menu-bar colors by charge level, the new default: light green above 50 %, light yellow from 21 to 50 %, light red at 20 % or less. The color choices are now **By charge level**, **Accent color** and **Monochrome**. Older color settings migrate automatically.
+- Settings → Menu Bar shows a live preview of the icon on a dark and a light menu bar.
+- The time-to-full and time-to-empty readout adds the clock time (“bis ca. 17:40 Uhr” / “until about 5:40 PM”).
+
+### Changed
+- The menu-bar battery is about 7 % smaller (30 × 14 pt body, 11.5 pt number) so it sits better next to the clock. The number is drawn dark on the colored fill and white on the empty part of the battery, so it stays readable from a distance in both light and dark mode.
+- App energy use shows each app's share of the energy used by all apps in percent (“31 %”) instead of milliwatts. The exact wattage appears as a tooltip.
+- Default dashboard: battery health and app energy use are open, history is collapsed, power flow and accessories are off. Untouched earlier defaults move to the new default; custom choices are kept.
+- Settings are simpler. Alerts are reduced to “battery low” and “charge target reached”, with one shared display style, sound and quiet-hours switch. The Accessories tab shows each device with a level bar and a short menu. Options without a clear use were removed: sampling intervals, watt precision, color intensity, panel background, volume and accessory order.
+- Unused localization entries were removed.
+
+### Fixed
+- **Open at login** now uses macOS's own login item API. Volta appears as “Volta” with its icon in System Settings. The old launch agent, which macOS listed as “open”, is removed automatically.
+- **Appearance** (Automatic, Light, Dark) now applies to all Volta windows immediately.
+- **Keep open** now keeps the dashboard visible when you click into another app.
+
+### Verification
+- `swift test`: 53 tests passed, including tests for login-item migration, the pinned panel window, the appearance options, the alert plan, the level colors, the icon size, the energy-share labels and the clock-time text.
+- Checked live on macOS: `sfltool dumpbtm` lists the login item as “Volta” (enabled, allowed). The pinned dashboard stayed open after Finder and another app were activated. The light/dark switch restyled the open dashboard.
+- Universal app (`arm64`, `x86_64`), ad-hoc signed. The installer is unsigned and nothing is notarized yet.
+
 ## [2.1.5] — 2026-11-17
 
 ### Changed

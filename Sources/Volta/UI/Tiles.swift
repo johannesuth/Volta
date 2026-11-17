@@ -32,7 +32,7 @@ struct DropdownRoot: View {
         .frame(width: dim(352))
         .fixedSize(horizontal: false, vertical: true)
         .onGeometryChange(for: CGSize.self, of: { $0.size }) { onSize($0) }
-        .glassPlate(radius: dim(18), shade: cfg.panelTint)
+        .glassPlate(radius: dim(18))
         .clipShape(.rect(cornerRadius: dim(18)))
         .overlay(RoundedRectangle(cornerRadius: dim(18), style: .continuous).stroke(.primary.opacity(0.07), lineWidth: 0.5))
         .environment(\.dim, dim)
@@ -103,11 +103,16 @@ private struct ChargeTile: View {
                     Label(modeTitle(s.mode), systemImage: modeSymbol(s.mode))
                         .font(dim.text(10.5, .medium))
                         .foregroundStyle(stateColor)
-                    if let remaining = telemetry.compactTime {
+                    if let remaining = telemetry.compactTime,
+                       let minutes = s.mode == .filling ? s.minutesToFull : s.minutesToEmpty {
+                        let clock = ClockText.until(minutes: minutes, language: ConfigStore.shared.c.language)
                         Text(Copy.text(s.mode == .filling ? "Voll in" : "Verbleibend",
                                        s.mode == .filling ? "Time to full" : "Time left"))
                             .font(dim.text(9.5)).foregroundStyle(.secondary)
                         Text(remaining).font(dim.number(13, .medium))
+                        Text(Copy.text(s.mode == .filling ? "voll um \(clock)" : "bis ca. \(clock)",
+                                       s.mode == .filling ? "full at \(clock)" : "until about \(clock)"))
+                            .font(dim.text(9.5)).foregroundStyle(.secondary)
                     }
                 }
             }
@@ -422,8 +427,8 @@ private struct AppsTile: View {
     var body: some View {
         let rows = Array(ledger.ranking.prefix(store.c.appRows))
         Tile(kind: .apps, trailing: AnyView(
-            Text(String(format: "%.1f W", ledger.total))
-                .font(dim.number(10.5, .medium)).foregroundStyle(.secondary)
+            Text(Copy.text("Anteil", "Share"))
+                .font(dim.text(10.5, .medium)).foregroundStyle(.secondary)
         )) {
             if rows.isEmpty {
                 Label(Copy.text("Noch keine Verbrauchsdaten für Apps verfügbar.", "No app energy data yet."),
@@ -439,9 +444,10 @@ private struct AppsTile: View {
                             HStack {
                                 Text(c.title).font(dim.text(11.5)).lineLimit(1)
                                 Spacer()
-                                Text(c.watts < 1 ? String(format: "%.0f mW", c.watts * 1000) : String(format: "%.1f W", c.watts))
+                                Text(EnergyShare.label(c.fraction))
                                     .font(dim.number(11, .semibold))
                                     .foregroundStyle(.primary)
+                                    .help(c.watts < 1 ? String(format: "%.0f mW", c.watts * 1000) : String(format: "%.1f W", c.watts))
                             }
                             Meter(fraction: c.fraction, tint: Hue.accent, thickness: dim(3))
                         }

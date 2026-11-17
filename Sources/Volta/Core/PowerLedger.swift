@@ -12,6 +12,16 @@ struct Consumer: Identifiable, Equatable {
     static func == (l: Consumer, r: Consumer) -> Bool { l.id == r.id && l.watts == r.watts }
 }
 
+/// Turns an app's share of the measured app energy into a plain percentage ("31 %").
+/// Milliwatts mean little to most people; a share answers "which app uses most of my battery?".
+enum EnergyShare {
+    static func label(_ fraction: Double) -> String {
+        guard fraction.isFinite else { return "< 1 %" }
+        let percent = Int((min(max(fraction, 0), 1) * 100).rounded())
+        return percent < 1 ? "< 1 %" : "\(percent) %"
+    }
+}
+
 /// Measures how much power each app draws, from the kernel's per-process energy counters.
 /// Processes are enumerated with `sysctl(KERN_PROC_ALL)`; helpers count toward their host `.app`.
 @Observable @MainActor

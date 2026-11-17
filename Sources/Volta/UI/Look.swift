@@ -18,9 +18,6 @@ enum Hue {
     static let warn = amber
     static let alarm = coral
 
-    /// 0 … 1 from the preferences – scales washes and glows, never the signal colours.
-    static var vivid: Double { ConfigStore.shared.c.vivid }
-
     static var accent: Color { duo(ConfigStore.shared.c.accent).0 }
     static var accentDuo: (Color, Color) { duo(ConfigStore.shared.c.accent) }
 

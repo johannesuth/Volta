@@ -6,6 +6,20 @@ final class DropWindow: NSPanel {
     var onEscape: (() -> Void)?
     override var canBecomeKey: Bool { true }
     override func cancelOperation(_ sender: Any?) { onEscape?() }
+
+    static func make() -> DropWindow {
+        let w = DropWindow(contentRect: NSRect(x: 0, y: 0, width: 392, height: 560),
+                           styleMask: [.borderless, .fullSizeContentView], backing: .buffered, defer: true)
+        w.backgroundColor = .clear
+        w.isOpaque = false
+        w.hasShadow = true
+        w.level = .popUpMenu
+        w.collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary, .transient]
+        w.isReleasedWhenClosed = false
+        // Panels hide themselves when the app loses focus by default; a pinned dashboard must stay.
+        w.hidesOnDeactivate = false
+        return w
+    }
 }
 
 /// Owns the status item and the dropdown window.
@@ -69,6 +83,7 @@ final class MenuBarPresence: NSObject {
         }
         item.button?.setAccessibilityLabel(Copy.text("Volta – \(snapshot.level) Prozent, \(t.headline)",
                                                       "Volta — \(snapshot.level) percent, \(t.headline)"))
+        item.button?.toolTip = snapshot.hasPack ? "\(snapshot.level) % · \(t.headline)" : t.headline
     }
 
     private func scheduleRepaint() {
@@ -115,7 +130,6 @@ final class MenuBarPresence: NSObject {
 
         if window == nil { buildWindow() }
         guard let window else { return }
-        window.appearance = ConfigStore.shared.c.look.appearance
         leases = [Telemetry.shared.lease(), GadgetHub.shared.boost(), PowerLedger.shared.watch()]
         Telemetry.shared.pull()
 
@@ -149,14 +163,7 @@ final class MenuBarPresence: NSObject {
     }
 
     private func buildWindow() {
-        let w = DropWindow(contentRect: NSRect(x: 0, y: 0, width: 392, height: 560),
-                           styleMask: [.borderless, .fullSizeContentView], backing: .buffered, defer: true)
-        w.backgroundColor = .clear
-        w.isOpaque = false
-        w.hasShadow = true
-        w.level = .popUpMenu
-        w.collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary, .transient]
-        w.isReleasedWhenClosed = false
+        let w = DropWindow.make()
         w.onEscape = { [weak self] in self?.close() }
 
         let root = DropdownRoot(

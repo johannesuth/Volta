@@ -22,24 +22,31 @@ final class ConfigResetTests: XCTestCase {
         XCTAssertEqual(reset.pollSeconds, 20)
     }
 
-    func testDashboardDefaultsToEverydayBatteryInformation() {
+    func testDashboardShowsHealthAppEnergyAndHistoryByDefault() {
         let config = Config()
-        XCTAssertEqual(config.hiddenTiles, [.balance, .gadgets, .apps])
-        XCTAssertEqual(config.tiles.filter { !config.hiddenTiles.contains($0) }, [.charge, .vitals, .trend])
+        XCTAssertEqual(config.hiddenTiles, [.balance, .gadgets])
+        XCTAssertEqual(config.tiles.filter { !config.hiddenTiles.contains($0) }, [.charge, .vitals, .apps, .trend])
+        XCTAssertEqual(config.expansion.openTiles, [.vitals, .apps], "history starts collapsed")
         XCTAssertFalse(config.showBatteryDetails, "mAh, voltage and current are opt-in technical values")
         XCTAssertEqual(config.appRows, 3)
     }
 
-    func testEarlierUntouchedDefaultsMigrateToTheEverydaySections() {
-        XCTAssertEqual(Config.migratedHiddenTiles([.trend, .vitals, .gadgets, .apps, .balance]), Config.defaultHiddenTiles)
-        XCTAssertEqual(Config.migratedHiddenTiles([.vitals, .gadgets, .apps]), Config.defaultHiddenTiles)
-        XCTAssertEqual(Config.migratedHiddenTiles([]), Config.defaultHiddenTiles)
+    func testEarlierUntouchedDefaultsMigrateToTheCurrentSections() {
+        for earlier: [TileKind] in [[.trend, .vitals, .gadgets, .apps, .balance], [.vitals, .gadgets, .apps], [.balance, .gadgets, .apps], []] {
+            XCTAssertEqual(Config.migratedHiddenTiles(earlier), Config.defaultHiddenTiles, "\(earlier)")
+        }
         XCTAssertEqual(Config.migratedHiddenTiles([.trend, .apps]), [.trend, .apps])
     }
 
     func testEarlierDefaultSectionOrderMigratesButCustomOrderIsKept() {
         XCTAssertEqual(Config.migratedTileOrder([.charge, .balance, .trend, .vitals, .gadgets, .apps]), Config.defaultTileOrder)
+        XCTAssertEqual(Config.migratedTileOrder([.charge, .vitals, .trend, .balance, .gadgets, .apps]), Config.defaultTileOrder)
         let custom: [TileKind] = [.charge, .apps, .trend, .vitals, .balance, .gadgets]
         XCTAssertEqual(Config.migratedTileOrder(custom), custom)
+    }
+
+    func testEarlierDefaultOpenSectionsMigrate() {
+        XCTAssertEqual(Config.migratedExpansion(TileExpansion(openTiles: [.vitals])), TileExpansion.standard)
+        XCTAssertEqual(Config.migratedExpansion(TileExpansion(openTiles: [.trend])), TileExpansion(openTiles: [.trend]))
     }
 }

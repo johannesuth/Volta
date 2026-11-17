@@ -6,45 +6,62 @@ import VoltaLanguageCore
 // MARK: - Option types
 
 enum Look: String, Codable, CaseIterable, Identifiable {
-    case night, day, auto
+    case auto, day, night
     var id: Self { self }
-    var title: String { ["night": Copy.text("Nacht", "Dark"), "day": Copy.text("Tag", "Light"), "auto": Copy.text("Automatisch", "Automatic")][rawValue]! }
+    var title: String {
+        switch self {
+        case .auto: Copy.text("Automatisch", "Automatic")
+        case .day: Copy.text("Hell", "Light")
+        case .night: Copy.text("Dunkel", "Dark")
+        }
+    }
 }
 
 enum GlyphStyle: String, Codable, CaseIterable, Identifiable {
     case cell, ring, cellPercent, digits, clock, bare
     var id: Self { self }
+    /// The styles offered in Settings; the others remain readable for older configurations.
+    static let choices: [GlyphStyle] = [.cell, .cellPercent, .digits, .bare]
     var title: String {
         switch self {
-        case .cell: Copy.text("Akkusymbol mit Ladestand", "Battery with level")
+        case .cell: Copy.text("Akku mit Zahl", "Battery with level")
         case .ring: Copy.text("Ring", "Ring")
-        case .cellPercent: Copy.text("Akkusymbol und Prozentangabe", "Battery + percent")
-        case .digits: Copy.text("Nur Zahl", "Number only")
+        case .cellPercent: Copy.text("Prozent + Akku", "Percent + battery")
+        case .digits: Copy.text("Nur Prozent", "Percent only")
         case .clock: Copy.text("Restzeit und Ladestand", "Time remaining + level")
-        case .bare: Copy.text("Nur Akkusymbol", "Battery only")
+        case .bare: Copy.text("Nur Akku", "Battery only")
         }
     }
 }
 
+/// How the menu-bar battery is coloured.
 enum GlyphTint: String, Codable, CaseIterable, Identifiable {
-    case status, blue, green, teal, violet, amber, rose, monochrome
+    case level, accent, monochrome
     var id: Self { self }
 
     var title: String {
         switch self {
-        case .status: Copy.text("Automatisch nach Akkustatus", "Automatic by battery status")
-        case .blue: Copy.text("Blau", "Blue")
-        case .green: Copy.text("Grün", "Green")
-        case .teal: Copy.text("Türkis", "Teal")
-        case .violet: Copy.text("Violett", "Violet")
-        case .amber: Copy.text("Bernstein", "Amber")
-        case .rose: Copy.text("Rosé", "Rose")
+        case .level: Copy.text("Nach Ladestand", "By charge level")
+        case .accent: Copy.text("Akzentfarbe", "Accent color")
         case .monochrome: Copy.text("Einfarbig", "Monochrome")
         }
     }
 
+    /// Older versions stored individual colours; they map onto the current, smaller set.
+    init(from decoder: Decoder) throws {
+        switch try decoder.singleValueContainer().decode(String.self) {
+        case "accent", "blue", "green", "teal", "violet", "amber", "rose": self = .accent
+        case "monochrome": self = .monochrome
+        default: self = .level
+        }
+    }
+
     static func legacyValue(tinted: Bool?) -> GlyphTint {
-        tinted == false ? .monochrome : .blue
+        switch tinted {
+        case false?: .monochrome
+        case true?: .accent
+        case nil: .level
+        }
     }
 }
 
@@ -82,7 +99,7 @@ struct TileExpansion: Codable, Equatable {
         self.openTiles = openTiles
     }
 
-    static let standard = TileExpansion(openTiles: [.vitals])
+    static let standard = TileExpansion(openTiles: [.vitals, .apps])
 
     func contains(_ tile: TileKind) -> Bool { openTiles.contains(tile) }
 
@@ -109,7 +126,6 @@ enum ChartSpan: String, Codable, CaseIterable, Identifiable {
 enum GadgetOrder: String, Codable, CaseIterable, Identifiable {
     case family, name, emptiest
     var id: Self { self }
-    var title: String { ["family": Copy.text("Nach Gerätetyp", "By device type"), "name": Copy.text("Alphabetisch", "Alphabetically"), "emptiest": Copy.text("Niedrigster Ladestand zuerst", "Lowest charge first")][rawValue]! }
 }
 
 /// The one accent colour of the otherwise neutral interface.
@@ -122,29 +138,27 @@ enum Accent: String, Codable, CaseIterable, Identifiable {
     }
 }
 
-enum AuraStrength: String, Codable, CaseIterable, Identifiable {
-    case faint, medium, vivid
-    var id: Self { self }
-    var title: String { ["faint": Copy.text("Zart", "Subtle"), "medium": Copy.text("Mittel", "Medium"), "vivid": Copy.text("Intensiv", "Strong")][rawValue]! }
-    var gain: Double { ["faint": 0.55, "medium": 1.0, "vivid": 1.6][rawValue]! }
-}
-
-enum CardPlacement: String, Codable, CaseIterable, Identifiable {
+enum CardPlacement: String, Codable, CaseIterable {
     case smart, upper, middle, lowerRight
-    var id: Self { self }
-    var title: String { ["smart": Copy.text("Automatisch", "Smart"), "upper": Copy.text("Oben", "Top"), "middle": Copy.text("Mitte", "Center"), "lowerRight": Copy.text("Unten rechts", "Bottom right")][rawValue]! }
 }
 
-/// How a trigger shows up on screen.
+/// How an alert shows up on screen.
 enum Presentation: String, Codable, CaseIterable, Identifiable {
     case aura, card, both, banner
     var id: Self { self }
-    var title: String { ["aura": Copy.text("Leuchtrahmen", "Edge glow"), "card": Copy.text("Hinweiskarte", "Notification card"), "both": Copy.text("Rahmen + Karte", "Glow + card"), "banner": Copy.text("Mitteilungszentrale", "Notification Center")][rawValue]! }
+    var title: String {
+        switch self {
+        case .aura: Copy.text("Leuchtrand", "Edge glow")
+        case .card: Copy.text("Karte", "Card")
+        case .both: Copy.text("Karte + Leuchtrand", "Card + glow")
+        case .banner: Copy.text("Mitteilung", "Notification")
+        }
+    }
     var wantsAura: Bool { self == .aura || self == .both }
     var wantsCard: Bool { self == .card || self == .both }
 }
 
-/// A user rule: fire when the level crosses `level` going `down` (draining) or `up` (charging).
+/// A rule: fire when the level crosses `level` going `down` (draining) or `up` (charging).
 struct Trigger: Codable, Hashable, Identifiable {
     enum Direction: String, Codable, CaseIterable { case down, up }
     var id = UUID()
@@ -154,13 +168,57 @@ struct Trigger: Codable, Hashable, Identifiable {
     var tone: String
     var lingers = false
     var active = true
+}
 
-    static let starterSet: [Trigger] = [
-        Trigger(direction: .down, level: 25, presentation: .aura, tone: "Tink"),
-        Trigger(direction: .down, level: 12, presentation: .both, tone: "Funk", lingers: true),
-        Trigger(direction: .down, level: 4, presentation: .both, tone: "Basso", lingers: true),
-        Trigger(direction: .up, level: 85, presentation: .card, tone: "Ping"),
-    ]
+/// The two everyday battery alerts, edited in Settings and turned into rules for `Sentinel`.
+struct AlertPlan: Codable, Equatable {
+    var lowOn = true
+    var lowLevel = 20
+    var fullOn = true
+    var fullLevel = 100
+    var style: Presentation = .card
+    var tone = "Glass"
+
+    static let lowLevels = [10, 15, 20, 25, 30]
+    static let fullLevels = [80, 90, 100]
+    static let styles: [Presentation] = [.card, .both, .banner]
+
+    private static let lowID = UUID(uuidString: "6C1F4E0A-2B7D-4C59-9E21-0B5D7A3F8E11")!
+    private static let fullID = UUID(uuidString: "C3A9D2B4-7E15-4F80-A6C2-5D1E9B7F4A22")!
+
+    var triggers: [Trigger] {
+        var rules: [Trigger] = []
+        if lowOn {
+            rules.append(Trigger(id: Self.lowID, direction: .down, level: lowLevel, presentation: style, tone: tone,
+                                 lingers: lowLevel <= 10))
+        }
+        if fullOn {
+            rules.append(Trigger(id: Self.fullID, direction: .up, level: fullLevel, presentation: style, tone: tone))
+        }
+        return rules
+    }
+
+    /// Converts the rule list of version 2.1 and earlier. The untouched starter set becomes the new default.
+    static func migrated(from old: [Trigger]) -> AlertPlan {
+        if old.map({ "\($0.direction.rawValue)\($0.level)" }) == ["down25", "down12", "down4", "up85"] { return AlertPlan() }
+        var plan = AlertPlan()
+        let downs = old.filter { $0.direction == .down }
+        if let low = downs.filter(\.active).max(by: { $0.level < $1.level }) ?? downs.max(by: { $0.level < $1.level }) {
+            plan.lowLevel = low.level
+            plan.lowOn = low.active
+            plan.style = low.presentation == .aura ? .both : low.presentation
+            plan.tone = ["Stumm", "Silent"].contains(low.tone) ? Chime.silent : low.tone
+        } else {
+            plan.lowOn = false
+        }
+        if let up = old.first(where: { $0.direction == .up }) {
+            plan.fullLevel = up.level
+            plan.fullOn = up.active
+        } else {
+            plan.fullOn = false
+        }
+        return plan
+    }
 }
 
 struct KeyCombo: Codable, Hashable {
@@ -187,43 +245,30 @@ struct QuietWindow: Codable, Hashable {
 struct Config: Codable, Equatable {
     // Menu bar
     var glyph: GlyphStyle = .cell
-    var glyphTint: GlyphTint = .blue
+    var glyphTint: GlyphTint = .level
     var glyphWatts = false
     var glyphQuietWhenFull = false
     var pinned: [String] = []
 
-    // Dropdown
+    // Dashboard
     var stickyDropdown = false
-    static let defaultTileOrder: [TileKind] = [.charge, .vitals, .trend, .balance, .gadgets, .apps]
+    static let defaultTileOrder: [TileKind] = [.charge, .vitals, .apps, .trend, .gadgets, .balance]
     var tiles: [TileKind] = Config.defaultTileOrder
     static let optionalTiles: [TileKind] = [.balance, .trend, .vitals, .gadgets, .apps]
-    /// Everyday information is shown by default; power flow and per-app energy are advanced extras.
-    static let defaultHiddenTiles: [TileKind] = [.balance, .gadgets, .apps]
+    /// Battery health, app energy use and history are shown by default; power flow is an advanced extra.
+    static let defaultHiddenTiles: [TileKind] = [.balance, .gadgets]
     var hiddenTiles: [TileKind] = Config.defaultHiddenTiles
     var expansion = TileExpansion.standard
     /// mAh, voltage and current in the battery-health section.
     var showBatteryDetails = false
-
-    /// Untouched defaults from 2.1.3 (everything hidden) and 2.1.4 (power flow and history) move to
-    /// the current default. Any other user choice is kept.
-    static func migratedHiddenTiles(_ stored: [TileKind]) -> [TileKind] {
-        let earlierDefaults: [Set<TileKind>] = [Set(optionalTiles), [.vitals, .gadgets, .apps]]
-        return stored.isEmpty || earlierDefaults.contains(Set(stored)) ? defaultHiddenTiles : stored
-    }
-
-    /// The earlier default order listed history before battery health; a custom order is kept.
-    static func migratedTileOrder(_ stored: [TileKind]) -> [TileKind] {
-        stored == TileKind.allCases ? defaultTileOrder : stored
-    }
     var chartSpan: ChartSpan = .day
     var appRows = 3
     var gadgetOrder: GadgetOrder = .family
-    var look: Look = .night
+
+    // Appearance
+    var look: Look = .auto
     var accent: Accent = .blue
-    var vivid: Double = 0.35
-    var panelTint: Double = 0.35
     var fahrenheit = false
-    var showDecimals = true
 
     // System
     var shortcut = KeyCombo.standard
@@ -232,18 +277,13 @@ struct Config: Codable, Equatable {
     var scanSeconds: Double = 45
 
     // Alerts
-    var triggers: [Trigger] = Trigger.starterSet
-    var aura: AuraStrength = .faint
-    var cardPlacement: CardPlacement = .smart
-    var cardSeconds: Double = 8
+    var alerts = AlertPlan()
     var volume: Double = 0.8
     var quiet = QuietWindow()
-    var gadgetFloor = 15
+    var gadgetFloor = 20
     var plugTone = true
-    var bannerAlso = false
-    var cooldownMinutes: Double = 10
 
-    // Gadgets
+    // Accessories
     var hiddenGadgets: [String] = []
 
     // Data
@@ -262,6 +302,21 @@ struct Config: Codable, Equatable {
         return fresh
     }
 
+    // MARK: Migration of earlier defaults (custom choices are always kept)
+
+    static func migratedHiddenTiles(_ stored: [TileKind]) -> [TileKind] {
+        let earlierDefaults: [Set<TileKind>] = [Set(optionalTiles), [.vitals, .gadgets, .apps], [.balance, .gadgets, .apps]]
+        return stored.isEmpty || earlierDefaults.contains(Set(stored)) ? defaultHiddenTiles : stored
+    }
+
+    static func migratedTileOrder(_ stored: [TileKind]) -> [TileKind] {
+        let earlierDefaults: [[TileKind]] = [TileKind.allCases, [.charge, .vitals, .trend, .balance, .gadgets, .apps]]
+        return earlierDefaults.contains(stored) ? defaultTileOrder : stored
+    }
+
+    static func migratedExpansion(_ stored: TileExpansion) -> TileExpansion {
+        stored == TileExpansion(openTiles: [.vitals]) ? .standard : stored
+    }
 }
 
 /// Observable owner of `Config`. Writes are debounced into `config.json`; unknown or missing keys
@@ -306,16 +361,13 @@ final class ConfigStore {
             cfg.hiddenTiles = Config.migratedHiddenTiles(cfg.hiddenTiles)
         }
         cfg.tiles = Config.migratedTileOrder(cfg.tiles)
-        if storedObject["appRows"] as? Int == 5 {
-            cfg.appRows = 3
+        cfg.expansion = Config.migratedExpansion(cfg.expansion)
+        if storedObject["alerts"] == nil, let raw = storedObject["triggers"],
+           let rulesData = try? JSONSerialization.data(withJSONObject: raw),
+           let rules = try? JSONDecoder().decode([Trigger].self, from: rulesData) {
+            cfg.alerts = AlertPlan.migrated(from: rules)
         }
         cfg.appRows = min(max(cfg.appRows, 3), 6)
-        if let vivid = storedObject["vivid"] as? Double, abs(vivid - 0.6) < 0.001 {
-            cfg.vivid = 0.35
-        }
-        for index in cfg.triggers.indices where ["Stumm", "Silent"].contains(cfg.triggers[index].tone) {
-            cfg.triggers[index].tone = Chime.silent
-        }
         return cfg
     }
 

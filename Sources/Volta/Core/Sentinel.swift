@@ -45,9 +45,11 @@ final class Sentinel {
             guard let list = note.object as? [Gadget] else { return }
             MainActor.assumeIsolated { Sentinel.shared.handle(list) }
         })
-        if ConfigStore.shared.c.bannerAlso {
-            UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in }
-        }
+        if ConfigStore.shared.c.alerts.style == .banner { requestNotificationPermission() }
+    }
+
+    func requestNotificationPermission() {
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in }
     }
 
     private func handle(_ tick: PowerTick) {
@@ -55,8 +57,8 @@ final class Sentinel {
         if let b = tick.before, b.hasPack, b.onMains != tick.now.onMains, cfg.plugTone {
             Chime.ring(tick.now.onMains ? "Morse" : "Frog", gain: 0.45)
         }
-        let cooldown = cfg.cooldownMinutes * 60
-        for t in Crossing.fired(before: tick.before, now: tick.now, triggers: cfg.triggers) {
+        let cooldown: TimeInterval = 10 * 60
+        for t in Crossing.fired(before: tick.before, now: tick.now, triggers: cfg.alerts.triggers) {
             if let last = lastFire[t.id], Date.now.timeIntervalSince(last) < cooldown { continue }
             lastFire[t.id] = .now
             stage(t, level: tick.now.level, snapshot: tick.now, preview: false)
@@ -70,7 +72,11 @@ final class Sentinel {
             guard let level = g.lowest else { continue }
             defer { gadgetBefore[g.id] = level }
             guard floor > 0, let old = gadgetBefore[g.id], old > floor, level <= floor else { continue }
-            Chime.ring("Pop")
+            Chime.ring(ConfigStore.shared.c.alerts.tone)
+            if ConfigStore.shared.c.alerts.style == .banner {
+                banner(g.name, Copy.text("Akku bei \(level) %", "Battery at \(level)%"))
+                continue
+            }
             Spotlight.shared.present(Notice(
                 headline: "\(g.name) · \(level) %",
                 detail: Copy.text("Der Akku des Zubehörs ist fast leer.", "This accessory is running low."),
@@ -78,13 +84,11 @@ final class Sentinel {
                 tint: level <= 10 ? Hue.alarm : (level <= 20 ? Hue.warn : Hue.accent),
                 fraction: Double(level) / 100,
                 aura: false, card: true, lingers: false, urgent: false))
-            if ConfigStore.shared.c.bannerAlso { banner(g.name, Copy.text("Akku bei \(level) %", "Battery at \(level)%")) }
         }
     }
 
     /// Shows a trigger. `preview` is used by Settings' play buttons.
     func stage(_ t: Trigger, level: Int, snapshot s: PowerSnapshot, preview: Bool) {
-        let cfg = ConfigStore.shared.c
         Chime.ring(t.tone, force: preview)
         let urgent = t.direction == .down && level <= 10
         let detail: String
@@ -107,8 +111,7 @@ final class Sentinel {
             fraction: Double(level) / 100,
             aura: t.presentation.wantsAura, card: t.presentation.wantsCard,
             lingers: t.lingers, urgent: urgent)
-        if t.presentation == .banner || cfg.bannerAlso { banner(notice.headline, notice.detail) }
-        if t.presentation != .banner { Spotlight.shared.present(notice) }
+        if t.presentation == .banner { banner(notice.headline, notice.detail) } else { Spotlight.shared.present(notice) }
     }
 
     private func banner(_ title: String, _ body: String) {

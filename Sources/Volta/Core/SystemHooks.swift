@@ -1,5 +1,6 @@
 import AppKit
 import Carbon.HIToolbox
+import ServiceManagement
 
 // MARK: - Global shortcut
 
@@ -64,31 +65,33 @@ final class GlobalShortcut {
     }
 }
 
-// MARK: - Start at login (per-user LaunchAgent)
+// MARK: - Open at login
 
-enum LoginAgent {
-    private static let label = "com.johannesuth.volta.autostart"
-    private static var plistURL: URL {
-        URL.homeDirectory.appending(path: "Library/LaunchAgents/\(label).plist")
+/// Registers Volta itself as a login item, so macOS lists it as "Volta" with its icon under
+/// System Settings → General → Login Items.
+enum LoginItem {
+    private static let legacyLabel = "com.johannesuth.volta.autostart"
+
+    static var isEnabled: Bool { SMAppService.mainApp.status == .enabled }
+    static var needsApproval: Bool { SMAppService.mainApp.status == .requiresApproval }
+
+    static func set(_ on: Bool) throws {
+        if on { try SMAppService.mainApp.register() } else { try SMAppService.mainApp.unregister() }
     }
 
-    static var isInstalled: Bool { FileManager.default.fileExists(atPath: plistURL.path(percentEncoded: false)) }
+    static func openSystemSettings() { SMAppService.openSystemSettingsLoginItems() }
 
-    static func install(_ on: Bool) {
-        if on {
-            let spec: [String: Any] = [
-                "Label": label,
-                "ProgramArguments": ["/usr/bin/open", "-g", "-j", Bundle.main.bundleURL.path(percentEncoded: false)],
-                "RunAtLoad": true,
-                "LimitLoadToSessionType": "Aqua",
-            ]
-            try? FileManager.default.createDirectory(at: plistURL.deletingLastPathComponent(), withIntermediateDirectories: true)
-            if let data = try? PropertyListSerialization.data(fromPropertyList: spec, format: .xml, options: 0) {
-                try? data.write(to: plistURL, options: .atomic)
-            }
-        } else {
-            try? FileManager.default.removeItem(at: plistURL)
-        }
+    /// Versions up to 2.1 used a LaunchAgent that started `/usr/bin/open`, which macOS showed as "open".
+    @discardableResult
+    static func removeLegacyAgent(in folder: URL = URL.homeDirectory.appending(path: "Library/LaunchAgents")) -> Bool {
+        let plist = folder.appending(path: "\(legacyLabel).plist")
+        guard FileManager.default.fileExists(atPath: plist.path(percentEncoded: false)) else { return false }
+        return (try? FileManager.default.removeItem(at: plist)) != nil
+    }
+
+    /// Replaces the old agent with a proper login item, keeping the user's choice.
+    static func migrateLegacyAgent() {
+        if removeLegacyAgent() { try? set(true) }
     }
 }
 

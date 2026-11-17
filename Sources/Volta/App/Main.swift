@@ -23,6 +23,8 @@ final class Conductor: NSObject, NSApplicationDelegate {
         _ = GadgetHub.shared
         Sentinel.shared.arm()
 
+        LoginItem.migrateLegacyAgent()
+        syncAppearance()
         let presence = MenuBarPresence()
         presence.showPreferences = { PreferencesWindow.shared.show() }
         self.presence = presence
@@ -42,6 +44,16 @@ final class Conductor: NSObject, NSApplicationDelegate {
                 OnboardingWindow.shared.show { [weak self] in self?.presence?.open() }
             }
         }
+    }
+
+    /// Applies Automatic / Light / Dark to every Volta window, immediately.
+    private func syncAppearance() {
+        let look = withObservationTracking {
+            ConfigStore.shared.c.look
+        } onChange: { [weak self] in
+            DispatchQueue.main.async { MainActor.assumeIsolated { self?.syncAppearance() } }
+        }
+        NSApp.appearance = look.appearance
     }
 
     /// Re-registers the global shortcut whenever it is changed in the preferences.
