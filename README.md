@@ -6,7 +6,7 @@
 
 **Battery, health and energy use, right in the macOS menu bar.**
 
-[![Download Volta](https://img.shields.io/badge/Download-Volta%202.3.1-4C5B8C?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/johannesuth/volta/releases/latest)
+[![Download Volta](https://img.shields.io/badge/Download-Volta%202.3.2-4C5B8C?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/johannesuth/volta/releases/latest)
 
 ![macOS 15 or later](https://img.shields.io/badge/macOS-15%2B-6878A8?logo=apple&logoColor=white)
 ![Apple silicon and Intel](https://img.shields.io/badge/Apple%20silicon%20%2B%20Intel-universal-6878A8)
@@ -30,7 +30,7 @@ The macOS battery menu tells you a percentage. Volta tells you the rest: how lon
 ## Features
 
 - **A menu-bar battery in color.** Light green above 50 %, light yellow from 21 to 50 %, light red at 20 % or less, with a sharp dark number like the macOS battery. Accent-color and monochrome styles are available.
-- **The dashboard at a glance.** Charge and time remaining, including the clock time (“until about 2:57 PM”). Battery health with maximum capacity, charge cycles and temperature. The apps using the most energy, shown as a simple share in percent.
+- **The dashboard at a glance.** Charge and time remaining, including the clock time (“until about 2:21 PM”). Battery health with maximum capacity, charge cycles and temperature. The apps using the most energy, shown as a simple share in percent.
 - **A history chart that reads itself.** Battery phases in blue, charging in green, over 6 hours, 24 hours or 7 days. Below it: average discharge per hour and the expected runtime on a full charge.
 - **Alerts you can preview.** A reminder when the battery runs low and a notice when your charge target is reached. Pick a card, a card with a glowing screen edge, or a real macOS notification that also lands in Notification Center. The color follows the charge level or uses one of six calm colors, and Settings shows a live preview of every change. Cards stay for five seconds, then fade out on their own.
 - **Accessories.** Battery levels of AirPods, mice and keyboards when macOS reports them, with an optional low-battery alert.
@@ -53,7 +53,7 @@ A short setup in three steps: pick English or German, allow **Open at login** an
 
 <img src="docs/screenshots/installer.png" alt="The Volta disk image window: drag Volta onto Applications" width="58%" align="right" />
 
-1. Download **Volta-2.3.1.dmg** from the [latest release](https://github.com/johannesuth/volta/releases/latest).
+1. Download **Volta-2.3.2.dmg** from the [latest release](https://github.com/johannesuth/volta/releases/latest).
 2. Open it and drag **Volta** onto **Applications**.
 3. Eject the **Volta** disk: click ⏏ next to it in the Finder sidebar, or drag it to the Trash.
 4. Open Volta from your Applications folder.
@@ -134,9 +134,9 @@ For the maintainer. Requires a paid Apple Developer Program membership.
 4. Publish:
 
    ```sh
-   git tag v2.3.1 && git push origin v2.3.1
-   gh release create v2.3.1 dist/Volta-2.3.1.dmg dist/SHA256SUMS.txt \
-     --title 'Volta 2.3.1' --notes-file docs/releases/2.3.1.md
+   git tag v2.3.2 && git push origin v2.3.2
+   gh release create v2.3.2 dist/Volta-2.3.2.dmg dist/SHA256SUMS.txt \
+     --title 'Volta 2.3.2' --notes-file docs/releases/2.3.2.md
    ```
 
 See [CHANGELOG.md](CHANGELOG.md) for the version history.

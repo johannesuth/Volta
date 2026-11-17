@@ -2,6 +2,17 @@
 
 All notable changes to Volta are recorded here. Dates use ISO 8601.
 
+## [2.3.2] — 2026-11-17
+
+### Changed
+- The number in the menu-bar battery is about 10 % smaller (11.7 pt, “100” at 10.4 pt) and now matches the macOS battery number. The battery keeps its 30 × 14 pt size.
+- The dashboard is more compact again: 312 instead of 336 pt wide (−7 %) and 612 instead of 713 pt tall with every section open (−14 %). Text keeps its size; the space comes from tighter spacing and a slightly flatter history chart.
+- With no accessory connected, the Accessories section is one line (“Keins verbunden” / “None connected”) instead of two.
+
+### Verification
+- `swift test`: 70 tests passed (56 app, 14 language core).
+- Checked live in German and English: no wrapping, truncation or clipping at the new width, and the menu-bar number next to the macOS battery.
+
 ## [2.3.1] — 2026-11-17
 
 ### Changed

@@ -74,17 +74,17 @@ final class MenuBarGlyphRenderingTests: XCTestCase {
 
         XCTAssertGreaterThan(digitCount, 0)
         XCTAssertGreaterThan(fillCount, 0)
-        XCTAssertGreaterThanOrEqual(digitBottom - digitTop + 1, 17,
-                                    "Digits should be at least 8.5 pt tall so they stay legible from a distance.")
+        XCTAssertGreaterThanOrEqual(digitBottom - digitTop + 1, 16,
+                                    "Digits should be at least 8 pt tall so they stay legible from a distance.")
         XCTAssertGreaterThan(fillLight / Double(max(fillCount, 1)) - digitLight / Double(max(digitCount, 1)), 0.45)
     }
 
     func testCompactBatteryWithALargerNumber() {
-        // A 32 × 15 pt body read as too large next to the clock; the 11.5 pt number of 2.2.1 as too small.
+        // A 32 × 15 pt body read as too large next to the clock. 13 pt digits then read about 10 % too big.
         let body = GlyphPainter.Metrics.cell
         XCTAssertEqual(body, CGSize(width: 30, height: 14))
-        XCTAssertEqual(GlyphPainter.Metrics.number, 13)
-        XCTAssertEqual(GlyphPainter.Metrics.numberFull, 11.5)
+        XCTAssertEqual(GlyphPainter.Metrics.number, 11.7)
+        XCTAssertEqual(GlyphPainter.Metrics.numberFull, 10.4)
         XCTAssertLessThan(GlyphPainter.Metrics.numberFull, GlyphPainter.Metrics.number)
 
         let image = GlyphPainter.image(snapshot: battery(level: 64), clock: nil, cfg: config(tint: .level),

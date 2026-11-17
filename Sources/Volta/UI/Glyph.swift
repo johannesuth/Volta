@@ -35,8 +35,8 @@ enum GlyphPainter {
         static let cellRadius: CGFloat = 4
         static let nub = CGSize(width: 2, height: 4.5)
         static let nubGap: CGFloat = 1
-        static let number: CGFloat = 13
-        static let numberFull: CGFloat = 11.5
+        static let number: CGFloat = 11.7
+        static let numberFull: CGFloat = 10.4
         /// Position on the system font's weight axis: a touch lighter than bold (700).
         static let numberWeight: CGFloat = 640
         static let caption: CGFloat = 13

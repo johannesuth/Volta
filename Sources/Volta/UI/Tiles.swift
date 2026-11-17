@@ -17,7 +17,7 @@ struct DropdownRoot: View {
     var body: some View {
         let cfg = store.c
         let dim = Dim()
-        VStack(spacing: dim(6)) {
+        VStack(spacing: dim(5)) {
             Masthead(openPreferences: openPreferences)
             ForEach(store.shownTiles) { kind in
                 switch kind {
@@ -31,7 +31,7 @@ struct DropdownRoot: View {
             }
             DockBar(dismiss: dismiss)
         }
-        .padding(dim(9))
+        .padding(dim(8))
         .frame(width: dim(Dim.panelWidth))
         .fixedSize(horizontal: false, vertical: true)
         .onGeometryChange(for: CGSize.self, of: { $0.size }) { onSize($0) }
@@ -102,7 +102,7 @@ private struct ChargeTile: View {
                     Text("%").font(dim.text(16, .medium)).foregroundStyle(.secondary)
                 }
                 Spacer()
-                VStack(alignment: .trailing, spacing: dim(3)) {
+                VStack(alignment: .trailing, spacing: dim(1)) {
                     Label(modeTitle(s.mode), systemImage: modeSymbol(s.mode))
                         .font(dim.text(10.5, .medium))
                         .foregroundStyle(stateColor)
@@ -425,7 +425,7 @@ private struct VitalsTile: View {
                 Spacer()
             }
             Meter(fraction: wear / 100, tint: Hue.accent, thickness: dim(4))
-            Grid(alignment: .leading, horizontalSpacing: dim(10), verticalSpacing: dim(7)) {
+            Grid(alignment: .leading, horizontalSpacing: dim(10), verticalSpacing: dim(5)) {
                 GridRow {
                     Figure(caption: Copy.text("Ladezyklen", "Charge cycles"), value: "\(s.cycles)", icon: "arrow.triangle.2.circlepath", tint: Hue.accent)
                     Figure(caption: Copy.text("Temperatur", "Temperature"), value: s.celsius.map(store.degrees) ?? "–", icon: "thermometer.medium", tint: Hue.accent)
@@ -450,12 +450,12 @@ private struct GadgetTile: View {
 
     var body: some View {
         let list = hub.visible
-        Tile(kind: .gadgets) {
-            if list.isEmpty {
-                Text(Copy.text("Kein Zubehör mit Akku verbunden.", "No battery accessory connected."))
-                    .font(dim.text(11)).foregroundStyle(.secondary)
-            } else {
-                VStack(spacing: dim(10)) { ForEach(list) { row($0) } }
+        let none = list.isEmpty
+            ? AnyView(Text(Copy.text("Keins verbunden", "None connected")).font(dim.text(10.5)).foregroundStyle(.secondary))
+            : nil
+        Tile(kind: .gadgets, trailing: none) {
+            if !list.isEmpty {
+                VStack(spacing: dim(8)) { ForEach(list) { row($0) } }
             }
         }
     }
@@ -529,11 +529,11 @@ private struct AppsTile: View {
                     .font(dim.text(11)).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            VStack(spacing: dim(10)) {
+            VStack(spacing: dim(6)) {
                 ForEach(rows) { c in
                     HStack(spacing: dim(9)) {
                         Image(nsImage: ledger.icon(for: c)).resizable().frame(width: dim(18), height: dim(18))
-                        VStack(alignment: .leading, spacing: dim(4)) {
+                        VStack(alignment: .leading, spacing: dim(3)) {
                             HStack {
                                 Text(c.title).font(dim.text(11.5)).lineLimit(1)
                                 Spacer()
@@ -588,6 +588,6 @@ private struct DockBar: View {
             .buttonStyle(.plain)
         }
         .padding(.horizontal, dim(4))
-        .padding(.top, dim(2))
+        .padding(.top, dim(1))
     }
 }

@@ -56,8 +56,9 @@ final class TrendChartTests: XCTestCase {
         // with about 5 % larger text: 1.11 × 1.05 ≈ 1.165.
         let dim = Dim()
         XCTAssertEqual(dim.pointSize(10), 11.65, accuracy: 0.001)
-        XCTAssertEqual(Dim.panelWidth, 336)
-        XCTAssertLessThanOrEqual(Dim.panelWidth / 352, 0.96)
-        XCTAssertEqual(Dim.chartHeight, 88, "the history chart was 112 pt tall")
+        // 2.3.2: 5–10 % narrower again, text unchanged.
+        XCTAssertEqual(Dim.panelWidth, 312)
+        XCTAssertLessThanOrEqual(Dim.panelWidth / 336, 0.95)
+        XCTAssertEqual(Dim.chartHeight, 72, "the history chart was 112 pt tall in 2.3.0")
     }
 }
