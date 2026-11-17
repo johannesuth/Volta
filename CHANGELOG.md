@@ -2,6 +2,16 @@
 
 All notable changes to Volta are recorded here. Dates use ISO 8601.
 
+## [2.4.0] — 2026-11-17
+
+### Added
+- Fifth menu-bar style **Logo only** (“Nur Logo”): Volta's logo mark, the ring arc and bolt from the app icon, drawn as a sharp vector at system-icon size. Like the macOS icons it turns white on a dark and black on a light menu bar; the charge level appears in its tooltip. All five styles sit in one row in Settings → Menu Bar.
+- With the logo selected, Settings hides the options that have no effect on it (color, hide number when full) and explains how the logo behaves.
+
+### Verification
+- `swift test`: 85 tests passed (71 app, 14 language core), including new tests for the logo's size, system tinting, its ring and bolt, and that it is never redrawn when only the level changes.
+- Checked live: the five styles in one row, the logo in the preview on dark and light bars, and the logo in the real menu bar.
+
 ## [2.3.3] — 2026-11-17
 
 ### Changed

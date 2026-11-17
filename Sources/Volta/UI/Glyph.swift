@@ -43,6 +43,10 @@ enum GlyphPainter {
         static let caption: CGFloat = 13
         static let badgeText: CGFloat = 11.5
         static let ring: CGFloat = 18
+        /// Volta's logo mark: ring arc and bolt, the size of a system menu-bar icon.
+        static let logo: CGFloat = 18
+        static let logoRadius: CGFloat = 7.5
+        static let logoLine: CGFloat = 1.6
     }
 
     /// The battery number's font: the system font at `Metrics.numberWeight` on its variable weight axis.
@@ -89,7 +93,8 @@ enum GlyphPainter {
 
     static func drawing(snapshot s: PowerSnapshot, clock: String?, cfg: Config, darkBar: Bool,
                         badges: [GlyphBadge]) -> GlyphDrawing {
-        let ink = ink(selection: cfg.glyphTint, level: s.level, darkBar: darkBar)
+        // The logo is drawn like a system icon: macOS tints it to match the menu bar.
+        let ink = ink(selection: cfg.glyph == .logo ? .monochrome : cfg.glyphTint, level: s.level, darkBar: darkBar)
         let watts: String? = cfg.glyphWatts
             ? String(format: "%.0f W", abs(s.onMains ? s.mainsWatts : s.packWatts)) : nil
         return GlyphDrawing(level: s.level, mode: s.mode, style: cfg.glyph, ink: ink, clock: clock,
@@ -132,6 +137,7 @@ struct GlyphDrawing: @unchecked Sendable {
         case bareCell
         case caption(String)
         case ring(number: Bool)
+        case logo
     }
 
     let level: Int
@@ -152,6 +158,7 @@ struct GlyphDrawing: @unchecked Sendable {
             if !hideNumber { parts.append(.caption("\(level) %")) }
             parts.append(.bareCell)
         case .ring: parts.append(.ring(number: !hideNumber))
+        case .logo: parts.append(.logo)
         case .digits: parts.append(.caption("\(level) %"))
         case .clock: parts.append(.caption(clock.map { "\($0) · \(level) %" } ?? "\(level) %"))
         }
@@ -168,7 +175,14 @@ struct GlyphDrawing: @unchecked Sendable {
             return String(format: "%.3f,%.3f,%.3f,%.3f", s.redComponent, s.greenComponent, s.blueComponent, s.alphaComponent)
         }
         let inkKey = "\(ink.template)|\(rgba(ink.fill))|\(rgba(ink.neutral))|\(rgba(ink.figure))|\(ink.trackAlpha)"
-        return "\(level)|\(mode)|\(parts)|\(inkKey)"
+        // Captions and badges carry their own text; only battery shapes depend on level and power state.
+        let shapesShowLevel = parts.contains {
+            switch $0 {
+            case .cell, .bareCell, .ring: true
+            case .badge, .caption, .logo: false
+            }
+        }
+        return "\(shapesShowLevel ? "\(level)|\(mode)" : "-")|\(parts)|\(inkKey)"
     }
 
     var width: CGFloat {
@@ -192,6 +206,8 @@ struct GlyphDrawing: @unchecked Sendable {
             return textWidth(text, size: M.caption, weight: .medium)
         case .ring:
             return M.ring
+        case .logo:
+            return M.logo
         }
     }
 
@@ -229,7 +245,36 @@ struct GlyphDrawing: @unchecked Sendable {
                         x: x, midY: midY, in: context, snap: snap)
         case .ring(let number):
             drawRing(number: number, at: x, midY: midY, in: context, snap: snap)
+        case .logo:
+            drawLogo(at: x, midY: midY, in: context, snap: snap)
         }
+    }
+
+    /// The app icon's mark without its plate: a faint full ring, a bright arc over 72 % clockwise from
+    /// the top, and the bolt. Same proportions as `Scripts/make-icon.swift` (ring radius 268 of 1024).
+    private func drawLogo(at x: CGFloat, midY: CGFloat, in context: CGContext, snap: (CGFloat) -> CGFloat) {
+        let centre = CGPoint(x: snap(x + M.logo / 2), y: snap(midY))
+        let r = M.logoRadius
+        context.saveGState()
+        defer { context.restoreGState() }
+        context.setLineWidth(M.logoLine)
+
+        context.setStrokeColor(ink.neutral.withAlphaComponent(0.3).cgColor)
+        context.addArc(center: centre, radius: r, startAngle: 0, endAngle: .pi * 2, clockwise: false)
+        context.strokePath()
+
+        context.setLineCap(.round)
+        context.setStrokeColor(ink.neutral.cgColor)
+        let top = CGFloat.pi / 2
+        context.addArc(center: centre, radius: r, startAngle: top, endAngle: top - .pi * 2 * 0.72, clockwise: true)
+        context.strokePath()
+
+        let unit = r / 268
+        let bolt: [(CGFloat, CGFloat)] = [(36, 200), (-108, -14), (-12, -14), (-42, -200), (110, 28), (12, 28)]
+        context.addLines(between: bolt.map { CGPoint(x: centre.x + $0.0 * unit, y: centre.y + $0.1 * unit) })
+        context.closePath()
+        context.setFillColor(ink.neutral.cgColor)
+        context.fillPath()
     }
 
     private func drawCell(size: CGSize, number: Bool, at x: CGFloat, midY: CGFloat, in context: CGContext,

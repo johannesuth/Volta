@@ -300,16 +300,17 @@ private struct MenuBarPrefs: View {
             }
 
             Section(Copy.text("Symbol", "Icon")) {
-                HStack(spacing: 10) {
+                HStack(spacing: 8) {
                     ForEach(GlyphStyle.choices) { style in
                         Button { store.c.glyph = style } label: {
                             VStack(spacing: 7) {
                                 MenuBarSample(level: 72, style: style, dark: true)
                                     .frame(maxWidth: .infinity, minHeight: 32)
                                     .background(Color(white: 0.13), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
-                                Text(style.title).font(.system(size: 11, weight: .medium)).lineLimit(1)
+                                Text(style.title).font(.system(size: 11, weight: .medium))
+                                    .lineLimit(1).minimumScaleFactor(0.8)
                             }
-                            .padding(7)
+                            .padding(6)
                             .background(store.c.glyph == style ? Hue.accent.opacity(0.14) : .clear, in: RoundedRectangle(cornerRadius: 10))
                             .overlay(RoundedRectangle(cornerRadius: 10)
                                 .stroke(store.c.glyph == style ? Hue.accent : Color.secondary.opacity(0.2), lineWidth: store.c.glyph == style ? 1.5 : 1))
@@ -320,15 +321,24 @@ private struct MenuBarPrefs: View {
                 .padding(.vertical, 2)
             }
 
-            Section {
-                Picker(selection: $store.c.glyphTint) {
-                    ForEach(GlyphTint.allCases) { Text($0.title).tag($0) }
-                } label: {
-                    SettingLabel(title: Copy.text("Farbe", "Color"), symbol: "paintbrush.fill")
+            if store.c.glyph == .logo {
+                Section {
+                    Label(Copy.text("Das Logo passt sich wie die Symbole von macOS hell oder dunkel an die Menüleiste an. Den Ladestand siehst du, wenn du mit dem Zeiger darauf zeigst.",
+                                    "The logo adapts to a light or dark menu bar like the macOS icons. Hover over it to see the charge level."),
+                          systemImage: "info.circle")
+                        .font(.callout).foregroundStyle(.secondary)
                 }
-                .pickerStyle(.segmented)
-            } footer: {
-                Text(tintExplanation)
+            } else {
+                Section {
+                    Picker(selection: $store.c.glyphTint) {
+                        ForEach(GlyphTint.allCases) { Text($0.title).tag($0) }
+                    } label: {
+                        SettingLabel(title: Copy.text("Farbe", "Color"), symbol: "paintbrush.fill")
+                    }
+                    .pickerStyle(.segmented)
+                } footer: {
+                    Text(tintExplanation)
+                }
             }
 
             Section(Copy.text("Optionen", "Options")) {
@@ -337,10 +347,12 @@ private struct MenuBarPrefs: View {
                                  detail: Copy.text("Zeigt den aktuellen Verbrauch neben dem Akku.", "Shows the current power draw next to the battery."),
                                  symbol: "bolt.fill")
                 }
-                Toggle(isOn: $store.c.glyphQuietWhenFull) {
-                    SettingLabel(title: Copy.text("Zahl bei vollem Akku ausblenden", "Hide the number when full"),
-                                 detail: Copy.text("Nur am Netzteil bei 100 %.", "Only on power at 100%."),
-                                 symbol: "eye.slash")
+                if store.c.glyph != .logo {
+                    Toggle(isOn: $store.c.glyphQuietWhenFull) {
+                        SettingLabel(title: Copy.text("Zahl bei vollem Akku ausblenden", "Hide the number when full"),
+                                     detail: Copy.text("Nur am Netzteil bei 100 %.", "Only on power at 100%."),
+                                     symbol: "eye.slash")
+                    }
                 }
             }
         }
@@ -357,7 +369,8 @@ private struct MenuBarPrefs: View {
 
     private func previewBar(dark: Bool) -> some View {
         HStack(spacing: 18) {
-            ForEach(previewLevels, id: \.self) { level in
+            // The logo looks the same at every level, so one sample is enough.
+            ForEach(store.c.glyph == .logo ? [72] : previewLevels, id: \.self) { level in
                 MenuBarSample(level: level, style: store.c.glyph, dark: dark)
             }
         }

@@ -21,10 +21,10 @@ enum Look: String, Codable, CaseIterable, Identifiable {
 }
 
 enum GlyphStyle: String, Codable, CaseIterable, Identifiable {
-    case cell, ring, cellPercent, digits, clock, bare
+    case cell, ring, cellPercent, digits, clock, bare, logo
     var id: Self { self }
     /// The styles offered in Settings; the others remain readable for older configurations.
-    static let choices: [GlyphStyle] = [.cell, .cellPercent, .digits, .bare]
+    static let choices: [GlyphStyle] = [.cell, .cellPercent, .digits, .bare, .logo]
     var title: String {
         switch self {
         case .cell: Copy.text("Akku mit Zahl", "Battery with level")
@@ -33,6 +33,7 @@ enum GlyphStyle: String, Codable, CaseIterable, Identifiable {
         case .digits: Copy.text("Nur Prozent", "Percent only")
         case .clock: Copy.text("Restzeit und Ladestand", "Time remaining + level")
         case .bare: Copy.text("Nur Akku", "Battery only")
+        case .logo: Copy.text("Nur Logo", "Logo only")
         }
     }
 }
