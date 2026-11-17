@@ -37,9 +37,20 @@ enum GlyphPainter {
         static let nubGap: CGFloat = 1
         static let number: CGFloat = 13
         static let numberFull: CGFloat = 11.5
+        /// Position on the system font's weight axis: a touch lighter than bold (700).
+        static let numberWeight: CGFloat = 640
         static let caption: CGFloat = 13
         static let badgeText: CGFloat = 11.5
         static let ring: CGFloat = 18
+    }
+
+    /// The battery number's font: the system font at `Metrics.numberWeight` on its variable weight axis.
+    nonisolated static func numberFont(size: CGFloat) -> NSFont {
+        let bold = NSFont.monospacedDigitSystemFont(ofSize: size, weight: .bold)
+        let variation = NSFontDescriptor.AttributeName(kCTFontVariationAttribute as String)
+        let weightAxis = 0x7767_6874  // 'wght'
+        let descriptor = bold.fontDescriptor.addingAttributes([variation: [weightAxis: Metrics.numberWeight]])
+        return NSFont(descriptor: descriptor, size: size) ?? bold
     }
 
     /// Soft, light status colours: green above 50 %, yellow down to 21 %, red at 20 % or less.
@@ -209,11 +220,11 @@ struct GlyphDrawing: @unchecked Sendable {
                 // Monochrome: the number is cut out of the battery, like the system battery icon.
                 context.saveGState()
                 context.setBlendMode(.destinationOut)
-                drawCentered(makeLine("\(level)", size: size, weight: .bold, color: .black), in: body, context: context, snap: snap)
+                drawCentered(makeLine("\(level)", font: GlyphPainter.numberFont(size: size), color: .black), in: body, context: context, snap: snap)
                 context.restoreGState()
             } else {
                 // One dark number over the light fill and the light empty part: no colour break at the edge.
-                drawCentered(makeLine("\(level)", size: size, weight: .bold, color: ink.figure), in: body, context: context, snap: snap)
+                drawCentered(makeLine("\(level)", font: GlyphPainter.numberFont(size: size), color: ink.figure), in: body, context: context, snap: snap)
             }
         } else {
             let outline = NSBezierPath(roundedRect: body.insetBy(dx: 0.5, dy: 0.5), xRadius: 3.4, yRadius: 3.4)
@@ -277,8 +288,12 @@ struct GlyphDrawing: @unchecked Sendable {
     }
 
     private func makeLine(_ text: String, size: CGFloat, weight: NSFont.Weight, color: NSColor) -> CTLine {
+        makeLine(text, font: font(size, weight), color: color)
+    }
+
+    private func makeLine(_ text: String, font: NSFont, color: NSColor) -> CTLine {
         let attributes: [NSAttributedString.Key: Any] = [
-            .font: font(size, weight),
+            .font: font,
             NSAttributedString.Key(kCTForegroundColorAttributeName as String): color.cgColor,
         ]
         return CTLineCreateWithAttributedString(NSAttributedString(string: text, attributes: attributes))

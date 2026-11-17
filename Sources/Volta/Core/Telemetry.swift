@@ -2,6 +2,7 @@
 // Source-available under the Volta License (see LICENSE). Not for redistribution.
 
 import Foundation
+import VoltaLanguageCore
 import Observation
 
 extension Notification.Name {
@@ -115,8 +116,12 @@ final class Telemetry {
     // MARK: Wording
 
     static func span(_ minutes: Int) -> String {
+        span(minutes, language: ConfigStore.shared.c.language)
+    }
+
+    nonisolated static func span(_ minutes: Int, language: AppLanguage) -> String {
         let h = minutes / 60, m = minutes % 60
-        if ConfigStore.shared.c.language == .english {
+        if language == .english {
             return h == 0 ? "\(m) min" : (m == 0 ? "\(h) hr" : "\(h) hr \(m) min")
         }
         return h == 0 ? "\(m) Min." : (m == 0 ? "\(h) Std." : "\(h) Std. \(m) Min.")

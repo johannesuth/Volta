@@ -83,8 +83,12 @@ enum Hue {
 /// Fixed-size layout metrics shared across the dropdown.
 struct Dim {
     var k: CGFloat = 1
-    /// Type is set about 11 % larger than the layout grid, so text reads comfortably while the panel keeps its size.
-    var type: CGFloat = 1.11
+    /// Type is set about 16.5 % larger than the layout grid, so text reads comfortably in a compact panel.
+    var type: CGFloat = 1.165
+    /// Width of the dashboard panel in grid points.
+    static let panelWidth: CGFloat = 336
+    /// Height of the history chart in grid points.
+    static let chartHeight: CGFloat = 88
     func callAsFunction(_ v: CGFloat) -> CGFloat { v * k }
     func pointSize(_ size: CGFloat) -> CGFloat { size * k * type }
     /// Regular text is drawn one step heavier (medium), which reads better on the translucent panel.
@@ -122,7 +126,7 @@ struct Tile<Content: View>: View {
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: dim(14), style: .continuous)
         let expanded = kind.map { expansion.wrappedValue.contains($0) } ?? true
-        VStack(alignment: .leading, spacing: dim(9)) {
+        VStack(alignment: .leading, spacing: dim(8)) {
             if let kind {
                 HStack(spacing: dim(6)) {
                     Button {
@@ -151,7 +155,7 @@ struct Tile<Content: View>: View {
             }
             if expanded { content.transition(.opacity) }
         }
-        .padding(dim(12))
+        .padding(dim(10))
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(shape.fill(.primary.opacity(0.035)))
         .overlay(shape.stroke(.primary.opacity(0.065), lineWidth: 0.5))
@@ -172,7 +176,7 @@ struct Figure: View {
         VStack(alignment: .leading, spacing: dim(2)) {
             HStack(spacing: dim(4)) {
                 if let icon { Image(systemName: icon).font(dim.text(9, .semibold)).foregroundStyle(tint) }
-                Text(caption).font(dim.text(10)).foregroundStyle(.secondary)
+                Text(caption).font(dim.text(10)).foregroundStyle(.secondary).lineLimit(1).minimumScaleFactor(0.85)
             }
             Text(value).font(dim.number(13.5)).foregroundStyle(valueTint)
                 .contentTransition(.numericText())

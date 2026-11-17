@@ -93,6 +93,27 @@ final class MenuBarGlyphRenderingTests: XCTestCase {
         XCTAssertEqual(image.size.height, GlyphPainter.Metrics.height)
     }
 
+    func testNumberIsAboutFivePercentLighterThanBold() {
+        // Bold (700) read slightly too heavy; the number uses weight 640 on the system font's weight axis.
+        XCTAssertEqual(GlyphPainter.Metrics.numberWeight, 640)
+        func ink(_ font: NSFont) -> Double {
+            let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: 80, pixelsHigh: 40, bitsPerSample: 8,
+                                       samplesPerPixel: 4, hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB,
+                                       bytesPerRow: 0, bitsPerPixel: 0)!
+            rep.size = NSSize(width: 40, height: 20)
+            NSGraphicsContext.saveGraphicsState()
+            NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rep)
+            NSAttributedString(string: "88", attributes: [.font: font, .foregroundColor: NSColor.black]).draw(at: NSPoint(x: 2, y: 2))
+            NSGraphicsContext.restoreGraphicsState()
+            var sum = 0.0
+            for y in 0..<40 { for x in 0..<80 { sum += Double(rep.colorAt(x: x, y: y)?.alphaComponent ?? 0) } }
+            return sum
+        }
+        let bold = ink(NSFont.monospacedDigitSystemFont(ofSize: 13, weight: .bold))
+        let number = ink(GlyphPainter.numberFont(size: 13))
+        XCTAssertEqual(number / bold, 0.95, accuracy: 0.02, "ink ratio \(number / bold)")
+    }
+
     func testLevelColorsAreLightGreenYellowAndRed() {
         func hueDegrees(_ color: NSColor) -> CGFloat { (color.usingColorSpace(.deviceRGB)?.hueComponent ?? 0) * 360 }
         let green = GlyphPainter.levelColor(.high), yellow = GlyphPainter.levelColor(.medium), red = GlyphPainter.levelColor(.low)

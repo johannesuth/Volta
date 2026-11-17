@@ -3,6 +3,7 @@
 
 import UserNotifications
 import XCTest
+import VoltaLanguageCore
 @testable import Volta
 
 final class AlertOptionsTests: XCTestCase {
@@ -34,6 +35,20 @@ final class AlertOptionsTests: XCTestCase {
             let trigger = Trigger(direction: direction, level: level, presentation: .card, tone: "Glass")
             XCTAssertEqual(Sentinel.notice(for: trigger, level: level, snapshot: snapshot, plan: plan).seconds, 5)
         }
+    }
+
+    func testLowBatteryTextHasNoDoublePeriod() {
+        // "etwa 42 Min.. Halte" – the German span already ends with a period.
+        for language in [AppLanguage.german, .english] {
+            for minutes in [42, 60, 95] {
+                let text = Sentinel.lowDetail(minutesLeft: minutes, urgent: false, language: language)
+                XCTAssertFalse(text.contains(".."), text)
+            }
+        }
+        XCTAssertEqual(Sentinel.lowDetail(minutesLeft: 42, urgent: false, language: .german),
+                       "Noch etwa 42 Min. Laufzeit – halte das Netzteil bereit.")
+        XCTAssertEqual(Sentinel.lowDetail(minutesLeft: 42, urgent: false, language: .english),
+                       "About 42 min left. Keep your charger handy.")
     }
 
     func testAnOldDurationKeyIsIgnored() throws {

@@ -17,7 +17,7 @@ struct DropdownRoot: View {
     var body: some View {
         let cfg = store.c
         let dim = Dim()
-        VStack(spacing: dim(7)) {
+        VStack(spacing: dim(6)) {
             Masthead(openPreferences: openPreferences)
             ForEach(store.shownTiles) { kind in
                 switch kind {
@@ -31,8 +31,8 @@ struct DropdownRoot: View {
             }
             DockBar(dismiss: dismiss)
         }
-        .padding(dim(10))
-        .frame(width: dim(352))
+        .padding(dim(9))
+        .frame(width: dim(Dim.panelWidth))
         .fixedSize(horizontal: false, vertical: true)
         .onGeometryChange(for: CGSize.self, of: { $0.size }) { onSize($0) }
         .glassPlate(radius: dim(18))
@@ -97,7 +97,7 @@ private struct ChargeTile: View {
             HStack(alignment: .center) {
                 HStack(alignment: .firstTextBaseline, spacing: dim(2)) {
                     Text("\(s.level)")
-                        .font(dim.number(38, .semibold))
+                        .font(dim.number(35, .semibold))
                         .contentTransition(.numericText(value: Double(s.level)))
                     Text("%").font(dim.text(16, .medium)).foregroundStyle(.secondary)
                 }
@@ -109,10 +109,12 @@ private struct ChargeTile: View {
                     if let remaining = telemetry.compactTime,
                        let minutes = s.mode == .filling ? s.minutesToFull : s.minutesToEmpty {
                         let clock = ClockText.until(minutes: minutes, language: ConfigStore.shared.c.language)
-                        Text(Copy.text(s.mode == .filling ? "Voll in" : "Verbleibend",
-                                       s.mode == .filling ? "Time to full" : "Time left"))
-                            .font(dim.text(9.5)).foregroundStyle(.secondary)
-                        Text(remaining).font(dim.number(13, .medium))
+                        HStack(alignment: .firstTextBaseline, spacing: dim(5)) {
+                            Text(Copy.text(s.mode == .filling ? "Voll in" : "Verbleibend",
+                                           s.mode == .filling ? "Time to full" : "Time left"))
+                                .font(dim.text(9.5)).foregroundStyle(.secondary)
+                            Text(remaining).font(dim.number(13, .medium))
+                        }
                         Text(Copy.text(s.mode == .filling ? "voll um \(clock)" : "bis ca. \(clock)",
                                        s.mode == .filling ? "full at \(clock)" : "until about \(clock)"))
                             .font(dim.text(9.5)).foregroundStyle(.secondary)
@@ -229,14 +231,14 @@ private struct TrendTile: View {
                     .frame(maxWidth: .infinity, minHeight: dim(70), alignment: .leading)
             } else {
                 chart
-                    .frame(height: dim(112))
+                    .frame(height: dim(Dim.chartHeight))
                 legend
                 HStack(spacing: dim(10)) {
                     Figure(caption: Copy.text("Ø Entladung", "Avg. discharge"), value: Journal.lossPerHour(marks.filter { $0.w != nil }).map {
                         Copy.text(String(format: "%.1f %%/Std.", $0), String(format: "%.1f %%/hr", $0))
                     } ?? "–",
                            icon: "chart.line.downtrend.xyaxis", tint: Hue.accent)
-                    Figure(caption: Copy.text("Laufzeit bei voller Ladung", "Full-charge runtime"), value: fullChargeRuntime.map(Telemetry.span) ?? "–",
+                    Figure(caption: Copy.text("Mit voller Ladung", "Full-charge runtime"), value: fullChargeRuntime.map(Telemetry.span) ?? "–",
                            icon: "battery.100percent", tint: Hue.accent)
                 }
             }
@@ -418,12 +420,12 @@ private struct VitalsTile: View {
                 .background((healthy ? Hue.mint : Hue.amber).opacity(0.14), in: Capsule())
         )) {
             HStack(alignment: .firstTextBaseline, spacing: dim(3)) {
-                Text(String(format: "%.0f", wear)).font(dim.number(24, .bold))
+                Text(String(format: "%.0f", wear)).font(dim.number(23, .bold))
                 Text(Copy.text("% maximale Kapazität", "% maximum capacity")).font(dim.text(11)).foregroundStyle(.secondary)
                 Spacer()
             }
             Meter(fraction: wear / 100, tint: Hue.accent, thickness: dim(4))
-            Grid(alignment: .leading, horizontalSpacing: dim(10), verticalSpacing: dim(9)) {
+            Grid(alignment: .leading, horizontalSpacing: dim(10), verticalSpacing: dim(7)) {
                 GridRow {
                     Figure(caption: Copy.text("Ladezyklen", "Charge cycles"), value: "\(s.cycles)", icon: "arrow.triangle.2.circlepath", tint: Hue.accent)
                     Figure(caption: Copy.text("Temperatur", "Temperature"), value: s.celsius.map(store.degrees) ?? "–", icon: "thermometer.medium", tint: Hue.accent)
@@ -527,7 +529,7 @@ private struct AppsTile: View {
                     .font(dim.text(11)).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            VStack(spacing: dim(12)) {
+            VStack(spacing: dim(10)) {
                 ForEach(rows) { c in
                     HStack(spacing: dim(9)) {
                         Image(nsImage: ledger.icon(for: c)).resizable().frame(width: dim(18), height: dim(18))

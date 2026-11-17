@@ -2,6 +2,21 @@
 
 All notable changes to Volta are recorded here. Dates use ISO 8601.
 
+## [2.3.1] — 2026-11-17
+
+### Changed
+- The dashboard is more compact: about 9 % shorter (713 instead of 782 pt with every section open) and 336 instead of 352 pt wide. Text is about 5 % larger at the same time.
+- “Remaining” and the time now share one line, and the German label “Laufzeit bei voller Ladung” is now “Mit voller Ladung”, so it no longer wraps.
+- The number in the menu-bar battery is slightly lighter: weight 640 on the system font's weight axis instead of bold (700), about 5 % less ink. Size and contrast are unchanged.
+- The alert preview in Settings draws its glowing edge like the real one, with a wide soft halo, a tighter glow and a thin rim, so it no longer looks pixelated. The hard strip at the top was removed.
+
+### Fixed
+- German low-battery alerts read “Noch etwa 42 Min. Laufzeit – halte das Netzteil bereit.” instead of “… 42 Min.. Halte …”.
+
+### Verification
+- `swift test`: 70 tests passed (56 app, 14 language core), including new tests for the number weight, the compact panel and the alert text in both languages.
+- Checked live in German and English: panel size, no wrapping or clipping, the preview glow, and the menu-bar number rendered before and after at 4×.
+
 ## [2.3.0] — 2026-11-17
 
 ### Added

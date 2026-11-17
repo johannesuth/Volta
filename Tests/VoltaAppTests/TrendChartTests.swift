@@ -51,10 +51,13 @@ final class TrendChartTests: XCTestCase {
         XCTAssertEqual(TrendReadout.text(level: 63, at: date, span: .week, language: .german), "Di 14:05 Uhr · 63 %")
     }
 
-    func testDashboardTextIsAboutElevenPercentLargerWhileTheLayoutKeepsItsSize() {
-        // +20 % read as too large; the user asked for about 7.5 % less: 1.2 × 0.925 ≈ 1.11.
+    func testCompactPanelWithSlightlyLargerText() {
+        // 2.3.0: text 1.11× the grid in a 352 pt panel. The user asked for a 5–10 % smaller panel
+        // with about 5 % larger text: 1.11 × 1.05 ≈ 1.165.
         let dim = Dim()
-        XCTAssertEqual(dim.pointSize(10), 11.1, accuracy: 0.001)
-        XCTAssertEqual(dim(352), 352, "the panel itself keeps its width")
+        XCTAssertEqual(dim.pointSize(10), 11.65, accuracy: 0.001)
+        XCTAssertEqual(Dim.panelWidth, 336)
+        XCTAssertLessThanOrEqual(Dim.panelWidth / 352, 0.96)
+        XCTAssertEqual(Dim.chartHeight, 88, "the history chart was 112 pt tall")
     }
 }

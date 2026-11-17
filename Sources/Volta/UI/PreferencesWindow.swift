@@ -653,16 +653,8 @@ private struct AlertPreview: View {
             LinearGradient(colors: [Color(red: 0.20, green: 0.27, blue: 0.45), Color(red: 0.42, green: 0.30, blue: 0.48),
                                     Color(red: 0.75, green: 0.48, blue: 0.45)],
                            startPoint: .topLeading, endPoint: .bottomTrailing)
-            Rectangle().fill(.black.opacity(0.28)).frame(height: 11)
 
-            if notice.aura {
-                shape
-                    .strokeBorder(AngularGradient(colors: [notice.tint, notice.tint.opacity(0.25), notice.tint,
-                                                           notice.tint.opacity(0.4), notice.tint], center: .center),
-                                  lineWidth: 7)
-                    .blur(radius: 5)
-                    .phaseAnimator([0.65, 1.0]) { glow, phase in glow.opacity(phase) } animation: { _ in .easeInOut(duration: 1.6) }
-            }
+            if notice.aura { PreviewGlow(tint: notice.tint, cornerRadius: 12) }
 
             if plan.style == .banner {
                 MockNotification(title: notice.headline, message: notice.detail)
@@ -679,10 +671,34 @@ private struct AlertPreview: View {
         }
         .frame(width: 420, height: 160)
         .clipShape(shape)
-        .overlay(shape.stroke(.primary.opacity(0.12), lineWidth: 1))
+        .overlay(shape.strokeBorder(.primary.opacity(0.1), lineWidth: 0.5))
+        .shadow(color: .black.opacity(0.18), radius: 8, y: 3)
         .animation(.smooth(duration: 0.25), value: plan)
         .animation(.smooth(duration: 0.25), value: direction)
         .accessibilityLabel(Copy.text("Vorschau der Warnung", "Alert preview"))
+    }
+}
+
+/// The screen-edge glow in miniature, built like the real one: a wide soft halo, a tighter glow and a
+/// thin bright rim, each a stroke centred on the outline whose outer half is masked away.
+private struct PreviewGlow: View {
+    let tint: Color
+    let cornerRadius: CGFloat
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+        let partner = tint.mix(with: .pink, by: 0.45)
+        let sweep = AngularGradient(colors: [tint, partner.opacity(0.4), tint.opacity(0.85), partner.opacity(0.3), tint],
+                                    center: .center)
+        ZStack {
+            shape.stroke(sweep, lineWidth: 30).blur(radius: 11).opacity(0.6)
+            shape.stroke(sweep, lineWidth: 9).blur(radius: 3).opacity(0.75)
+            shape.strokeBorder(sweep, lineWidth: 1.5).opacity(0.9)
+        }
+        .compositingGroup()
+        .mask(shape)
+        .phaseAnimator([1.0, 0.72]) { glow, phase in glow.opacity(phase) } animation: { _ in .easeInOut(duration: 2.2) }
+        .allowsHitTesting(false)
     }
 }
 

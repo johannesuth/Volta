@@ -2,6 +2,7 @@
 // Source-available under the Volta License (see LICENSE). Not for redistribution.
 
 import Foundation
+import VoltaLanguageCore
 import SwiftUI
 import UserNotifications
 
@@ -104,10 +105,7 @@ final class Sentinel {
         let detail: String
         switch t.direction {
         case .down:
-            detail = s.minutesToEmpty.map { Copy.text("Der Akku hält noch etwa \(Telemetry.span($0)). Halte das Netzteil bereit.",
-                                                       "About \(Telemetry.span($0)) left. Keep your charger handy.") }
-                ?? (urgent ? Copy.text("Schließe jetzt das Netzteil an.", "Connect your charger now.")
-                           : Copy.text("Jetzt ist ein guter Zeitpunkt, das Netzteil anzuschließen.", "Now is a good time to connect your charger."))
+            detail = lowDetail(minutesLeft: s.minutesToEmpty, urgent: urgent, language: Copy.language)
         case .up:
             detail = level >= 100 ? Copy.text("Akku voll. Du kannst das Netzteil abziehen.", "The battery is full. You can unplug the charger.")
                                   : Copy.text("Ladeziel erreicht. Das schont den Akku.", "Charge limit reached. This helps protect the battery.")
@@ -121,6 +119,20 @@ final class Sentinel {
             fraction: Double(level) / 100,
             aura: t.presentation.wantsAura, card: t.presentation.wantsCard,
             seconds: AlertPlan.showSeconds, urgent: urgent)
+    }
+
+    /// The second line of a low-battery alert. German time spans end with a period ("42 Min."), so the
+    /// sentence continues instead of ending right after it.
+    nonisolated static func lowDetail(minutesLeft: Int?, urgent: Bool, language: AppLanguage) -> String {
+        if let minutes = minutesLeft {
+            let span = Telemetry.span(minutes, language: language)
+            return language.localized(german: "Noch etwa \(span) Laufzeit – halte das Netzteil bereit.",
+                                      english: "About \(span) left. Keep your charger handy.")
+        }
+        return urgent
+            ? language.localized(german: "Schließe jetzt das Netzteil an.", english: "Connect your charger now.")
+            : language.localized(german: "Jetzt ist ein guter Zeitpunkt, das Netzteil anzuschließen.",
+                                 english: "Now is a good time to connect your charger.")
     }
 
     /// A real macOS notification (banner and Notification Center). Asks for permission first if needed.

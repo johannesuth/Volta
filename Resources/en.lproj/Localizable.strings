@@ -36,7 +36,7 @@
 "Der Verlauf erscheint, sobald ein paar Messpunkte gesammelt sind." = "History will appear after a few samples have been collected.";
 "Zeit" = "Time";
 "Ø Entladung" = "Average discharge";
-"Laufzeit bei voller Ladung" = "Full-charge runtime";
+"Mit voller Ladung" = "Full-charge runtime";
 "Ladezyklen" = "Charge cycles";
 "Kein Zubehör mit Akku verbunden." = "No battery-powered accessories connected.";
 "Nicht mehr in der Menüleiste" = "Remove from menu bar";
