@@ -6,7 +6,7 @@
 
 **Battery, health and energy use, right in the macOS menu bar.**
 
-[![Download Volta](https://img.shields.io/badge/Download-Volta%202.5.0-4C5B8C?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/johannesuth/volta/releases/latest)
+[![Download Volta](https://img.shields.io/badge/Download-Volta%202.5.1-4C5B8C?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/johannesuth/volta/releases/latest)
 
 ![macOS 15 or later](https://img.shields.io/badge/macOS-15%2B-6878A8?logo=apple&logoColor=white)
 ![Apple silicon and Intel](https://img.shields.io/badge/Apple%20silicon%20%2B%20Intel-universal-6878A8)
@@ -61,7 +61,7 @@ A short setup in three steps: pick English or German, allow **Open at login** an
 
 <img src="docs/screenshots/installer.png" alt="The Volta disk image window: drag Volta onto Applications" width="58%" align="right" />
 
-1. Download **Volta-2.5.0.dmg** from the [latest release](https://github.com/johannesuth/volta/releases/latest).
+1. Download **Volta-2.5.1.dmg** from the [latest release](https://github.com/johannesuth/volta/releases/latest).
 2. Open it and drag **Volta** onto **Applications**.
 3. Eject the **Volta** disk: click ⏏ next to it in the Finder sidebar, or drag it to the Trash.
 4. Open Volta from your Applications folder.
@@ -113,7 +113,7 @@ You need macOS 15 or later and Xcode.
 git clone https://github.com/johannesuth/volta.git
 cd volta
 export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
-swift test                          # 113 unit tests
+swift test                          # 114 unit tests
 ./Scripts/build-app.sh              # build/Volta.app and dist/Volta-<version>.dmg
 ./Scripts/build-app.sh --install    # also replaces /Applications/Volta.app and starts it
 ```
@@ -147,9 +147,9 @@ For the maintainer. Requires a paid Apple Developer Program membership.
 4. Publish:
 
    ```sh
-   git tag v2.5.0 && git push origin v2.5.0
-   gh release create v2.5.0 dist/Volta-2.5.0.dmg dist/SHA256SUMS.txt \
-     --title 'Volta 2.5.0' --notes-file docs/releases/2.5.0.md
+   git tag v2.5.1 && git push origin v2.5.1
+   gh release create v2.5.1 dist/Volta-2.5.1.dmg dist/SHA256SUMS.txt \
+     --title 'Volta 2.5.1' --notes-file docs/releases/2.5.1.md
    ```
 
 See [CHANGELOG.md](CHANGELOG.md) for the version history.

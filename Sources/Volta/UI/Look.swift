@@ -90,6 +90,8 @@ struct Dim {
     var type: CGFloat = 1.107
     /// Width of the dashboard panel in grid points.
     static let panelWidth: CGFloat = 312
+    /// Strength of the lines between the rows of the action card: visible, but quiet.
+    static let rowDividerOpacity: Double = 0.19
     /// Space between the dashboard's cards.
     static let cardGap: CGFloat = 7
     /// Height of the history chart in grid points.

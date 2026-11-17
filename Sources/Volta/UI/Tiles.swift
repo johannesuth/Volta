@@ -539,7 +539,7 @@ private struct ActionCard: View {
             VStack(spacing: 0) {
                 ForEach(Array(PanelAction.allCases.enumerated()), id: \.offset) { index, action in
                     if index > 0 {
-                        Rectangle().fill(.primary.opacity(0.16)).frame(height: 1)
+                        Rectangle().fill(.primary.opacity(Dim.rowDividerOpacity)).frame(height: 1)
                             .padding(.leading, dim(28))
                     }
                     row(action)

@@ -57,4 +57,11 @@ final class PanelActionsTests: XCTestCase {
 
     func testIconBadgeIsFramedAndFilledInDarkMode() { checkBadge(.dark, plate: Color(white: 0.17)) }
     func testIconBadgeIsFramedAndFilledInLightMode() { checkBadge(.light, plate: Color(white: 0.93)) }
+
+    func testRowDividersAreJustSlightlyStrongerThanBefore() {
+        // 2.4.2 drew them at 16 % of the text colour; the user asked for a barely more visible line.
+        XCTAssertGreaterThan(Dim.rowDividerOpacity, 0.16)
+        XCTAssertLessThanOrEqual(Dim.rowDividerOpacity, 0.2)
+    }
+
 }

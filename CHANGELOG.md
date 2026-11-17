@@ -2,6 +2,14 @@
 
 All notable changes to Volta are recorded here. Dates use ISO 8601.
 
+## [2.5.1] — 2026-11-17
+
+### Changed
+- The lines between the rows of the action card (Low Power Mode, App Settings, Battery Settings, Quit) are slightly more visible: 19 % of the text colour instead of 16 %.
+
+### Verification
+- `swift test`: 114 tests passed (100 app, 14 language core). Checked live in the dashboard.
+
 ## [2.5.0] — 2026-11-17
 
 ### Added
