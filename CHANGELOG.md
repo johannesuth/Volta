@@ -2,6 +2,24 @@
 
 All notable changes to Volta are recorded here. Dates use ISO 8601.
 
+## [2.3.3] — 2026-11-17
+
+### Changed
+- Much lower energy and memory use. Measured on the same Mac with the same procedure (fresh start, dashboard and Settings opened once):
+  - Dashboard closed: CPU 3.4–3.6 % → 0.02 %, `top` energy score 3.2–3.4 → 0.0.
+  - Dashboard open: CPU 8.6–9.4 % → 4.7–5.0 %, energy score 7.7–8.6 → 4.0, memory 119 MB → 45 MB on average, own GPU time 0.22 → 0 ms/s.
+  - Idle after using the dashboard: memory 56–62 MB → 34 MB (43–44 MB after Settings was also open).
+- The history chart is drawn by Volta itself in one canvas instead of Swift Charts, which kept about 60 MB of GPU memory alive. It looks the same; the hover label now sits opposite the point so it never hides it.
+- The menu-bar icon is replaced only when something visible changes. Before, setting the icon nudged the button's appearance, which triggered a repaint about five times per second while nothing changed.
+- A closed dashboard and a closed Settings window are released completely and rebuilt on the next open.
+- In the background, Volta samples the battery when macOS reports a change (level, adapter, estimate) and otherwise once a minute, instead of every 20 seconds.
+- App energy is measured only while that section is open; process paths are cached and app icons stored as small bitmaps.
+- Accessories are scanned every 2 minutes in the background (every 10 seconds while the section is visible), and not at all when nothing uses them.
+
+### Verification
+- `swift test`: 81 tests passed (67 app, 14 language core), including new tests for the icon signature, sampling rhythms, process-path cache, small app icons and the chart geometry.
+- CPU and energy from `ps`/`top`, memory from `footprint` (sampled every second for 30 s while open), GPU time from the graphics driver's per-client statistics. The chart and its hover label were compared side by side with 2.3.2.
+
 ## [2.3.2] — 2026-11-17
 
 ### Changed

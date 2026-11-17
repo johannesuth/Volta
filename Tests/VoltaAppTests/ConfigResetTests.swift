@@ -13,7 +13,7 @@ final class ConfigResetTests: XCTestCase {
         current.language = .english
         current.languageChosen = true
         current.pinned = ["headphones-1"]
-        current.pollSeconds = 60
+        current.fahrenheit = true
 
         let reset = current.resetForSettings()
 
@@ -22,7 +22,7 @@ final class ConfigResetTests: XCTestCase {
         XCTAssertEqual(reset.language, .english)
         XCTAssertTrue(reset.languageChosen)
         XCTAssertEqual(reset.pinned, ["headphones-1"])
-        XCTAssertEqual(reset.pollSeconds, 20)
+        XCTAssertFalse(reset.fahrenheit)
     }
 
     func testDashboardShowsHealthAppEnergyAndHistoryByDefault() {

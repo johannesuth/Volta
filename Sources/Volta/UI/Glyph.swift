@@ -2,6 +2,7 @@
 // Source-available under the Volta License (see LICENSE). Not for redistribution.
 
 import AppKit
+import os
 import CoreText
 
 /// A connected accessory shown beside the battery in the menu bar.
@@ -45,13 +46,19 @@ enum GlyphPainter {
     }
 
     /// The battery number's font: the system font at `Metrics.numberWeight` on its variable weight axis.
+    /// Created once per size: building a variable-axis font on every draw showed up in idle profiles.
     nonisolated static func numberFont(size: CGFloat) -> NSFont {
+        if let cached = numberFonts.withLockUnchecked({ $0[size] }) { return cached }
         let bold = NSFont.monospacedDigitSystemFont(ofSize: size, weight: .bold)
         let variation = NSFontDescriptor.AttributeName(kCTFontVariationAttribute as String)
         let weightAxis = 0x7767_6874  // 'wght'
         let descriptor = bold.fontDescriptor.addingAttributes([variation: [weightAxis: Metrics.numberWeight]])
-        return NSFont(descriptor: descriptor, size: size) ?? bold
+        let font = NSFont(descriptor: descriptor, size: size) ?? bold
+        numberFonts.withLockUnchecked { $0[size] = font }
+        return font
     }
+
+    private nonisolated static let numberFonts = OSAllocatedUnfairLock(uncheckedState: [CGFloat: NSFont]())
 
     /// Soft, light status colours: green above 50 %, yellow down to 21 %, red at 20 % or less.
     static func levelColor(_ band: LevelBand) -> NSColor {
@@ -80,14 +87,29 @@ enum GlyphPainter {
                         trackAlpha: darkBar ? 0.46 : 0.26)
     }
 
-    static func image(snapshot s: PowerSnapshot, clock: String?, cfg: Config, darkBar: Bool,
-                      badges: [GlyphBadge]) -> NSImage {
+    static func drawing(snapshot s: PowerSnapshot, clock: String?, cfg: Config, darkBar: Bool,
+                        badges: [GlyphBadge]) -> GlyphDrawing {
         let ink = ink(selection: cfg.glyphTint, level: s.level, darkBar: darkBar)
         let watts: String? = cfg.glyphWatts
             ? String(format: "%.0f W", abs(s.onMains ? s.mainsWatts : s.packWatts)) : nil
-        let drawing = GlyphDrawing(level: s.level, mode: s.mode, style: cfg.glyph, ink: ink, clock: clock,
-                                   watts: watts, badges: badges,
-                                   hideNumber: cfg.glyphQuietWhenFull && s.mode == .topped)
+        return GlyphDrawing(level: s.level, mode: s.mode, style: cfg.glyph, ink: ink, clock: clock,
+                            watts: watts, badges: badges,
+                            hideNumber: cfg.glyphQuietWhenFull && s.mode == .topped)
+    }
+
+    /// Everything that is visible in the icon. Equal signatures draw identical images.
+    static func signature(snapshot s: PowerSnapshot, clock: String?, cfg: Config, darkBar: Bool,
+                          badges: [GlyphBadge]) -> String {
+        drawing(snapshot: s, clock: clock, cfg: cfg, darkBar: darkBar, badges: badges).signature
+    }
+
+    static func image(snapshot s: PowerSnapshot, clock: String?, cfg: Config, darkBar: Bool,
+                      badges: [GlyphBadge]) -> NSImage {
+        image(for: drawing(snapshot: s, clock: clock, cfg: cfg, darkBar: darkBar, badges: badges))
+    }
+
+    static func image(for drawing: GlyphDrawing) -> NSImage {
+        let ink = drawing.ink
         let size = NSSize(width: ceil(drawing.width), height: Metrics.height)
         let image = NSImage(size: size, flipped: false) { rect in
             guard let context = NSGraphicsContext.current?.cgContext else { return false }
@@ -138,6 +160,16 @@ struct GlyphDrawing: @unchecked Sendable {
     }
 
     private var plugged: Bool { [.filling, .topped, .resting].contains(mode) }
+
+    /// Identifies the drawn result: parts, level, power state and colours.
+    var signature: String {
+        func rgba(_ c: NSColor) -> String {
+            guard let s = c.usingColorSpace(.sRGB) else { return c.description }
+            return String(format: "%.3f,%.3f,%.3f,%.3f", s.redComponent, s.greenComponent, s.blueComponent, s.alphaComponent)
+        }
+        let inkKey = "\(ink.template)|\(rgba(ink.fill))|\(rgba(ink.neutral))|\(rgba(ink.figure))|\(ink.trackAlpha)"
+        return "\(level)|\(mode)|\(parts)|\(inkKey)"
+    }
 
     var width: CGFloat {
         let widths = parts.map(width(of:))

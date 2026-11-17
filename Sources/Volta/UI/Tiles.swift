@@ -2,7 +2,6 @@
 // Source-available under the Volta License (see LICENSE). Not for redistribution.
 
 import SwiftUI
-import Charts
 import VoltaLanguageCore
 
 // MARK: - Root
@@ -230,7 +229,8 @@ private struct TrendTile: View {
                     .font(dim.text(11)).foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, minHeight: dim(70), alignment: .leading)
             } else {
-                chart
+                TrendCanvas(marks: marks, span: span, language: store.c.language,
+                            batteryColor: batteryColor, chargingColor: chargingColor, hovered: $hovered)
                     .frame(height: dim(Dim.chartHeight))
                 legend
                 HStack(spacing: dim(10)) {
@@ -249,89 +249,6 @@ private struct TrendTile: View {
         .onChange(of: telemetry.now.level) {
             if open { reload() }
         }
-    }
-
-    private var chart: some View {
-        let segments = TrendSegment.split(marks, maxGap: span.maxGap)
-        let last = marks.last
-        return Chart {
-            ForEach(segments) { segment in
-                let color = segment.charging ? chargingColor : batteryColor
-                ForEach(segment.points, id: \.t) { m in
-                    AreaMark(x: .value("t", m.date), yStart: .value("0", 0), yEnd: .value("%", m.p),
-                             series: .value("s", segment.id))
-                        .interpolationMethod(.monotone)
-                        .foregroundStyle(LinearGradient(colors: [color.opacity(0.30), color.opacity(0.02)],
-                                                        startPoint: .top, endPoint: .bottom))
-                    LineMark(x: .value("t", m.date), y: .value("%", m.p), series: .value("s", segment.id))
-                        .interpolationMethod(.monotone)
-                        .lineStyle(StrokeStyle(lineWidth: dim(2.2), lineCap: .round, lineJoin: .round))
-                        .foregroundStyle(color)
-                }
-            }
-            if let hovered {
-                RuleMark(x: .value("t", hovered.date))
-                    .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
-                    .foregroundStyle(.secondary.opacity(0.6))
-                    .annotation(position: .top, spacing: dim(2),
-                                overflowResolution: .init(x: .fit(to: .chart), y: .disabled)) {
-                        Text(TrendReadout.text(level: hovered.p, at: hovered.date, span: span, language: store.c.language))
-                            .font(dim.number(9.5, .semibold))
-                            .padding(.horizontal, dim(7)).padding(.vertical, dim(3))
-                            .background(.regularMaterial, in: Capsule())
-                            .overlay(Capsule().stroke(.primary.opacity(0.1), lineWidth: 0.5))
-                    }
-                PointMark(x: .value("t", hovered.date), y: .value("%", hovered.p))
-                    .symbolSize(dim(45))
-                    .foregroundStyle(hovered.ac ? chargingColor : batteryColor)
-            } else if let last {
-                let color = last.ac ? chargingColor : batteryColor
-                PointMark(x: .value("t", last.date), y: .value("%", last.p))
-                    .symbolSize(dim(150))
-                    .foregroundStyle(color.opacity(0.22))
-                PointMark(x: .value("t", last.date), y: .value("%", last.p))
-                    .symbolSize(dim(40))
-                    .foregroundStyle(color)
-            }
-        }
-        .chartYScale(domain: 0...100)
-        .chartXScale(domain: (Date.now - span.interval)...Date.now)
-        .chartYAxis {
-            AxisMarks(position: .trailing, values: [0, 50, 100]) { v in
-                AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5)).foregroundStyle(.primary.opacity(0.08))
-                AxisValueLabel {
-                    Text("\(v.as(Int.self) ?? 0)").font(dim.number(8.5, .medium)).foregroundStyle(Color.secondary)
-                }
-            }
-        }
-        .chartXAxis {
-            AxisMarks(values: .stride(by: span == .week ? .day : .hour, count: span == .week ? 1 : (span == .day ? 6 : 2))) { v in
-                AxisValueLabel(collisionResolution: .greedy) {
-                    if let d = v.as(Date.self) {
-                        Text(ChartAxisLabel.text(for: d, span: span, language: store.c.language))
-                            .font(dim.text(8.5))
-                            .foregroundStyle(Color.secondary)
-                    }
-                }
-            }
-        }
-        .chartOverlay { proxy in
-            GeometryReader { geometry in
-                Rectangle().fill(.clear).contentShape(Rectangle())
-                    .onContinuousHover { phase in
-                        switch phase {
-                        case .active(let point):
-                            guard let plot = proxy.plotFrame else { return }
-                            let x = point.x - geometry[plot].origin.x
-                            guard let date: Date = proxy.value(atX: x) else { return }
-                            hovered = marks.min { abs($0.date.timeIntervalSince(date)) < abs($1.date.timeIntervalSince(date)) }
-                        case .ended:
-                            hovered = nil
-                        }
-                    }
-            }
-        }
-        .animation(.easeOut(duration: 0.12), value: hovered)
     }
 
     private var legend: some View {
@@ -458,6 +375,8 @@ private struct GadgetTile: View {
                 VStack(spacing: dim(8)) { ForEach(list) { row($0) } }
             }
         }
+        // Scans more often only while the section is on screen.
+        .holding { GadgetHub.shared.boost() }
     }
 
     private func row(_ g: Gadget) -> some View {
@@ -523,6 +442,7 @@ private struct AppsTile: View {
             Text(Copy.text("Anteil", "Share"))
                 .font(dim.text(10.5, .medium)).foregroundStyle(.secondary)
         )) {
+            VStack(alignment: .leading, spacing: dim(6)) {
             if rows.isEmpty {
                 Label(Copy.text("Noch keine Verbrauchsdaten für Apps verfügbar.", "No app energy data yet."),
                       systemImage: "chart.bar.xaxis")
@@ -550,7 +470,28 @@ private struct AppsTile: View {
                     }
                 }
             }
+            }
+            // Measures app energy only while this list is on screen (open dashboard, section expanded).
+            .holding { PowerLedger.shared.watch() }
         }
+    }
+}
+
+/// Keeps a `Telemetry.Lease` while the view is on screen and gives it back when it disappears.
+private struct LeaseWhileVisible: ViewModifier {
+    let make: () -> Telemetry.Lease
+    @State private var lease: Telemetry.Lease?
+
+    func body(content: Content) -> some View {
+        content
+            .onAppear { if lease == nil { lease = make() } }
+            .onDisappear { lease = nil }
+    }
+}
+
+extension View {
+    fileprivate func holding(_ make: @escaping () -> Telemetry.Lease) -> some View {
+        modifier(LeaseWhileVisible(make: make))
     }
 }
 

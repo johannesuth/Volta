@@ -332,8 +332,6 @@ struct Config: Codable, Equatable {
     // System
     var shortcut = KeyCombo.standard
     var shortcutOn = true
-    var pollSeconds: Double = 20
-    var scanSeconds: Double = 45
 
     // Alerts
     var alerts = AlertPlan()

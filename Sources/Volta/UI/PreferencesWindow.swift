@@ -962,9 +962,19 @@ private struct AboutPrefs: View {
 // MARK: - Window
 
 @MainActor
-final class PreferencesWindow {
+final class PreferencesWindow: NSObject, NSWindowDelegate {
     static let shared = PreferencesWindow()
     private var window: NSWindow?
+
+    /// A closed Settings window is released completely; it is rebuilt on the next open.
+    func windowWillClose(_ notification: Notification) {
+        guard let closing = notification.object as? NSWindow, closing === window else { return }
+        DispatchQueue.main.async { MainActor.assumeIsolated {
+            guard self.window === closing, !closing.isVisible else { return }
+            closing.contentViewController = nil
+            self.window = nil
+        } }
+    }
 
     func show() {
         if window == nil {
@@ -974,6 +984,7 @@ final class PreferencesWindow {
             w.titleVisibility = .hidden
             w.setContentSize(NSSize(width: 680, height: 700))
             w.isReleasedWhenClosed = false
+            w.delegate = self
             w.center()
             window = w
         }

@@ -38,6 +38,10 @@ final class MenuBarPresence: NSObject {
     private var anchor: (midX: CGFloat, top: CGFloat, screen: NSRect)?
     private var resignToken: NSObjectProtocol?
     private var barAppearance: NSKeyValueObservation?
+    /// What the menu bar currently shows; a repaint that would draw the same thing is skipped.
+    private var shownSignature: String?
+    private var shownTip: String?
+    private var shownDark: Bool?
     var showPreferences: () -> Void = {}
 
     override init() {
@@ -58,13 +62,22 @@ final class MenuBarPresence: NSObject {
                 MainActor.assumeIsolated { self?.scheduleRepaint() }
             },
         ]
+        // Setting an image makes macOS touch the button's appearance; only a real light/dark switch
+        // may lead to a repaint, otherwise the two keep triggering each other.
         barAppearance = button.observe(\.effectiveAppearance) { [weak self] _, _ in
-            DispatchQueue.main.async { MainActor.assumeIsolated { self?.scheduleRepaint() } }
+            DispatchQueue.main.async { MainActor.assumeIsolated {
+                guard let self, self.barIsDark != self.shownDark else { return }
+                self.scheduleRepaint()
+            } }
         }
         repaint()
     }
 
     // MARK: Icon
+
+    private var barIsDark: Bool {
+        item.button?.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+    }
 
     private func repaint() {
         repaintGate.recordRefresh(at: .now)
@@ -75,18 +88,28 @@ final class MenuBarPresence: NSObject {
             guard let g = GadgetHub.shared.all.first(where: { $0.id == id }), g.connected else { return nil }
             return GlyphBadge(symbol: g.family.sfSymbol, level: g.lowest)
         }
-        let dark = item.button?.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
-        let image = GlyphPainter.image(snapshot: snapshot, clock: t.compactTime, cfg: cfg, darkBar: dark, badges: badges)
+        let dark = barIsDark
+        shownDark = dark
         if snapshot.hasPack {
-            item.button?.image = image
-        } else {
+            let drawing = GlyphPainter.drawing(snapshot: snapshot, clock: t.compactTime, cfg: cfg, darkBar: dark, badges: badges)
+            let signature = drawing.signature
+            if signature != shownSignature {
+                item.button?.image = GlyphPainter.image(for: drawing)
+                shownSignature = signature
+            }
+        } else if shownSignature != "plug" {
             let plug = NSImage(systemSymbolName: "powerplug.portrait.fill", accessibilityDescription: "Volta")
             plug?.isTemplate = true
             item.button?.image = plug
+            shownSignature = "plug"
         }
-        item.button?.setAccessibilityLabel(Copy.text("Volta – \(snapshot.level) Prozent, \(t.headline)",
-                                                      "Volta — \(snapshot.level) percent, \(t.headline)"))
-        item.button?.toolTip = snapshot.hasPack ? "\(snapshot.level) % · \(t.headline)" : t.headline
+        let tip = snapshot.hasPack ? "\(snapshot.level) % · \(t.headline)" : t.headline
+        if tip != shownTip {
+            item.button?.setAccessibilityLabel(Copy.text("Volta – \(snapshot.level) Prozent, \(t.headline)",
+                                                          "Volta — \(snapshot.level) percent, \(t.headline)"))
+            item.button?.toolTip = tip
+            shownTip = tip
+        }
     }
 
     private func scheduleRepaint() {
@@ -133,7 +156,8 @@ final class MenuBarPresence: NSObject {
 
         if window == nil { buildWindow() }
         guard let window else { return }
-        leases = [Telemetry.shared.lease(), GadgetHub.shared.boost(), PowerLedger.shared.watch()]
+        // App energy and accessory scans are leased by their dashboard sections while those are visible.
+        leases = [Telemetry.shared.lease()]
         Telemetry.shared.pull()
 
         place(size: host?.fittingSize ?? NSSize(width: 392, height: 560))
@@ -160,9 +184,19 @@ final class MenuBarPresence: NSObject {
         if let resignToken { NotificationCenter.default.removeObserver(resignToken) }
         resignToken = nil
         leases.removeAll()
-        NSAnimationContext.runAnimationGroup { $0.duration = 0.12; window.animator().alphaValue = 0 } completionHandler: {
+        NSAnimationContext.runAnimationGroup { $0.duration = 0.12; window.animator().alphaValue = 0 } completionHandler: { [weak self] in
             window.orderOut(nil)
+            MainActor.assumeIsolated { self?.release(window) }
         }
+    }
+
+    /// A closed dashboard keeps nothing alive: no SwiftUI views that react to new samples, no chart, no memory.
+    /// Building it again on the next click takes a few milliseconds.
+    private func release(_ closed: DropWindow) {
+        guard window === closed, !closed.isVisible else { return }
+        closed.contentView = nil
+        host = nil
+        window = nil
     }
 
     private func buildWindow() {

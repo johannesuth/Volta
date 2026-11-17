@@ -142,13 +142,26 @@ final class GadgetHub {
         }
     }
 
+    /// Seconds between scans while nothing accessory-related is on screen. Accessory batteries drain slowly,
+    /// so this is plenty for low-battery alerts; each scan starts a `system_profiler` process.
+    nonisolated static let backgroundInterval: Double = 120
+    /// Seconds between scans while the Accessories section is visible.
+    nonisolated static let liveInterval: Double = 10
+
+    /// Background scans only run if something uses them: the Accessories section, a pinned accessory
+    /// in the menu bar, or the accessory low-battery alert.
+    static func needsBackgroundScan(_ c: Config) -> Bool {
+        let sectionShown = c.tiles.contains(.gadgets) && !c.hiddenTiles.contains(.gadgets)
+        return sectionShown || !c.pinned.isEmpty || c.gadgetFloor > 0
+    }
+
     private func relaunchLoop() {
         loop?.cancel()
         loop = Task { [weak self] in
             while !Task.isCancelled {
-                await self?.rescan()
-                let wait = (self?.boosted ?? 0) > 0 ? 6.0 : ConfigStore.shared.c.scanSeconds
-                try? await Task.sleep(for: .seconds(wait))
+                let live = (self?.boosted ?? 0) > 0
+                if live || Self.needsBackgroundScan(ConfigStore.shared.c) { await self?.rescan() }
+                try? await Task.sleep(for: .seconds(live ? Self.liveInterval : Self.backgroundInterval))
             }
         }
     }

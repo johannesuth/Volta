@@ -4,6 +4,7 @@
 import Foundation
 import VoltaLanguageCore
 import Observation
+import IOKit.ps
 
 extension Notification.Name {
     /// object: `PowerTick` — posted after every fresh power sample.
@@ -20,7 +21,8 @@ struct PowerTick {
 }
 
 /// Keeps the most recent `PowerSnapshot` and decides how often to sample.
-/// While any `Lease` is alive (the dropdown is open) sampling runs at ~1.5 s.
+/// In the background, macOS's power-source events (level, adapter, estimate) trigger a sample, with a
+/// slow timer as a safety net. While any `Lease` is alive (the dashboard is open) sampling runs at 1.5 s.
 @Observable @MainActor
 final class Telemetry {
     static let shared = Telemetry()
@@ -42,8 +44,22 @@ final class Telemetry {
         deinit { release() }
     }
 
+    nonisolated static let backgroundCadence: Duration = .seconds(60)
+    nonisolated static let liveCadence: Duration = .milliseconds(1500)
+
     private init() {
         pull()
+        let me = Unmanaged.passUnretained(self).toOpaque()
+        if let source = IOPSNotificationCreateRunLoopSource({ context in
+            guard let context else { return }
+            let telemetry = Unmanaged<Telemetry>.fromOpaque(context).takeUnretainedValue()
+            MainActor.assumeIsolated {
+                guard Date.now.timeIntervalSince(telemetry.lastPull) > 0.8 else { return }
+                telemetry.pull()
+            }
+        }, me)?.takeRetainedValue() {
+            CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
+        }
         watcher = PackWatcher { [weak self] in
             MainActor.assumeIsolated {
                 guard let self, Date.now.timeIntervalSince(self.lastPull) > 0.8 else { return }
@@ -68,12 +84,7 @@ final class Telemetry {
         }
     }
 
-    private var cadence: Duration {
-        if leases > 0 { return .milliseconds(1500) }
-        var seconds = ConfigStore.shared.c.pollSeconds
-        if !now.onMains && now.level <= 12 { seconds = min(seconds, 8) }
-        return .seconds(seconds)
-    }
+    private var cadence: Duration { leases > 0 ? Self.liveCadence : Self.backgroundCadence }
 
     private func restartLoop() {
         loop?.cancel()
