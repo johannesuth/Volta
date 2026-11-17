@@ -323,6 +323,9 @@ struct Backdrop: NSViewRepresentable {
 extension View {
     /// Liquid Glass where available, a vibrancy view elsewhere. `shade` darkens (or lightens) the plate.
     @ViewBuilder func glassPlate(radius: CGFloat, shade: Double = 0.35) -> some View {
+        // Liquid Glass needs the macOS 26 SDK (Swift 6.2+). Older toolchains, such as the CI runner's
+        // Xcode 16, build the blurred backdrop that macOS 15 uses anyway.
+        #if compiler(>=6.2)
         if #available(macOS 26.0, *) {
             background(Color(nsColor: .windowBackgroundColor).opacity(shade), in: .rect(cornerRadius: radius))
                 .glassEffect(.regular, in: .rect(cornerRadius: radius))
@@ -330,5 +333,9 @@ extension View {
             background(Color(nsColor: .windowBackgroundColor).opacity(shade), in: .rect(cornerRadius: radius))
                 .background(Backdrop().clipShape(.rect(cornerRadius: radius)))
         }
+        #else
+        background(Color(nsColor: .windowBackgroundColor).opacity(shade), in: .rect(cornerRadius: radius))
+            .background(Backdrop().clipShape(.rect(cornerRadius: radius)))
+        #endif
     }
 }
