@@ -16,7 +16,7 @@ struct DropdownRoot: View {
     var body: some View {
         let cfg = store.c
         let dim = Dim()
-        VStack(spacing: dim(5)) {
+        VStack(spacing: dim(Dim.cardGap)) {
             Masthead(openPreferences: openPreferences)
             ForEach(store.shownTiles) { kind in
                 switch kind {

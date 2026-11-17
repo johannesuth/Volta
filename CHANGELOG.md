@@ -2,6 +2,15 @@
 
 All notable changes to Volta are recorded here. Dates use ISO 8601.
 
+## [2.4.1] — 2026-11-17
+
+### Changed
+- The dashboard sections are now separate, softly rounded cards: a slightly lighter surface, a fine edge that is brighter at the top in dark mode and a soft grey line in light mode, and 7 pt between the cards (was 5). Corners are a touch rounder (15 pt). The panel grows by only 12 pt.
+
+### Verification
+- `swift test`: 88 tests passed (74 app, 14 language core). A new render test checks in dark and light mode that each card's surface and edge stand out from the gap between cards.
+- Checked live in dark and light mode.
+
 ## [2.4.0] — 2026-11-17
 
 ### Added

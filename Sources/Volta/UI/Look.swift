@@ -87,6 +87,8 @@ struct Dim {
     var type: CGFloat = 1.165
     /// Width of the dashboard panel in grid points.
     static let panelWidth: CGFloat = 312
+    /// Space between the dashboard's cards.
+    static let cardGap: CGFloat = 7
     /// Height of the history chart in grid points.
     static let chartHeight: CGFloat = 72
     func callAsFunction(_ v: CGFloat) -> CGFloat { v * k }
@@ -107,10 +109,11 @@ extension EnvironmentValues {
 
 // MARK: - Building blocks
 
-/// A section of the dropdown: coloured icon + caption, content, and a faint wash of its hue.
+/// A section of the dropdown: a softly rounded card with a coloured icon, caption and content.
 struct Tile<Content: View>: View {
     @Environment(\.dim) private var dim
     @Environment(\.tileExpansion) private var expansion
+    @Environment(\.colorScheme) private var scheme
     let kind: TileKind?
     let tint: Color
     let trailing: AnyView?
@@ -124,7 +127,7 @@ struct Tile<Content: View>: View {
     }
 
     var body: some View {
-        let shape = RoundedRectangle(cornerRadius: dim(14), style: .continuous)
+        let shape = RoundedRectangle(cornerRadius: dim(15), style: .continuous)
         let expanded = kind.map { expansion.wrappedValue.contains($0) } ?? true
         VStack(alignment: .leading, spacing: dim(6)) {
             if let kind {
@@ -158,9 +161,22 @@ struct Tile<Content: View>: View {
         .padding(.horizontal, dim(10))
         .padding(.vertical, dim(8))
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(shape.fill(.primary.opacity(0.035)))
-        .overlay(shape.stroke(.primary.opacity(0.065), lineWidth: 0.5))
+        .background(shape.fill(surface))
+        .overlay(shape.strokeBorder(edge, lineWidth: dim(0.8)))
         .animation(.snappy(duration: 0.18), value: expanded)
+    }
+
+    /// A card a touch lighter than the panel behind it.
+    private var surface: Color {
+        scheme == .dark ? .white.opacity(0.06) : .white.opacity(0.55)
+    }
+
+    /// A fine edge, lit from above: brighter at the top in dark mode, a soft grey line in light mode.
+    private var edge: LinearGradient {
+        let colors: [Color] = scheme == .dark
+            ? [.white.opacity(0.20), .white.opacity(0.08)]
+            : [.black.opacity(0.15), .black.opacity(0.19)]
+        return LinearGradient(colors: colors, startPoint: .top, endPoint: .bottom)
     }
 }
 

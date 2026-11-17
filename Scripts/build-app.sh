@@ -7,7 +7,7 @@ cd "$(dirname "$0")/.."
 export DEVELOPER_DIR=${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}
 
 VERSION=${VOLTA_VERSION:-$(<VERSION)}
-BUILD_NUMBER=${VOLTA_BUILD_NUMBER:-35}
+BUILD_NUMBER=${VOLTA_BUILD_NUMBER:-36}
 VERSION_PATTERN='^[0-9]+\.[0-9]+\.[0-9]+([+-][0-9A-Za-z.-]+)?$'
 if ! [[ "$VERSION" =~ $VERSION_PATTERN ]]; then
   print -u2 "Invalid VOLTA_VERSION: expected a version such as 2.1.0."
