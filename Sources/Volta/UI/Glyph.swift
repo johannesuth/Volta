@@ -14,9 +14,9 @@ struct GlyphInk: @unchecked Sendable {
     var neutral: NSColor
     /// The charged part of the battery.
     var fill: NSColor
-    /// The number where it sits on the fill, and where it sits on the empty part.
-    var figureOnFill: NSColor
-    var figureOnTrack: NSColor
+    /// The level number: one colour across the whole battery, like the system battery icon.
+    var figure: NSColor
+    /// Opacity of `neutral` for the empty part; light enough that the dark number stays readable on it.
     var trackAlpha: CGFloat
 }
 
@@ -58,13 +58,12 @@ enum GlyphPainter {
 
     static func ink(selection: GlyphTint, level: Int, darkBar: Bool) -> GlyphInk {
         guard let fill = fillColor(for: selection, level: level)?.usingColorSpace(.sRGB) else {
-            return GlyphInk(template: true, neutral: .black, fill: .black, figureOnFill: .black, figureOnTrack: .black, trackAlpha: 0.35)
+            return GlyphInk(template: true, neutral: .black, fill: .black, figure: .black, trackAlpha: 0.35)
         }
-        let lightFill = 0.2126 * fill.redComponent + 0.7152 * fill.greenComponent + 0.0722 * fill.blueComponent > 0.45
+        // A light empty part (like the macOS battery) lets one dark number read well over fill and track alike.
         let ink = NSColor(srgbRed: 0.07, green: 0.08, blue: 0.09, alpha: 1)
-        return GlyphInk(template: false, neutral: darkBar ? .white : .black, fill: fill,
-                        figureOnFill: lightFill ? ink : .white, figureOnTrack: .white,
-                        trackAlpha: darkBar ? 0.28 : 0.5)
+        return GlyphInk(template: false, neutral: darkBar ? .white : .black, fill: fill, figure: ink,
+                        trackAlpha: darkBar ? 0.46 : 0.26)
     }
 
     static func image(snapshot s: PowerSnapshot, clock: String?, cfg: Config, darkBar: Bool,
@@ -194,7 +193,6 @@ struct GlyphDrawing: @unchecked Sendable {
         if number {
             let shape = NSBezierPath(roundedRect: body, xRadius: M.cellRadius, yRadius: M.cellRadius)
             let charged = CGRect(x: body.minX, y: body.minY, width: snap(body.width * fraction), height: body.height)
-            let empty = CGRect(x: charged.maxX, y: body.minY, width: body.maxX - charged.maxX, height: body.height)
             ink.neutral.withAlphaComponent(ink.trackAlpha).setFill()
             shape.fill()
             NSGraphicsContext.saveGraphicsState()
@@ -211,13 +209,8 @@ struct GlyphDrawing: @unchecked Sendable {
                 drawCentered(makeLine("\(level)", size: size, weight: .bold, color: .black), in: body, context: context, snap: snap)
                 context.restoreGState()
             } else {
-                // Dark on the light fill, white on the empty part: readable on both sides of the edge.
-                for (area, color) in [(charged, ink.figureOnFill), (empty, ink.figureOnTrack)] where area.width > 0 {
-                    context.saveGState()
-                    context.clip(to: area)
-                    drawCentered(makeLine("\(level)", size: size, weight: .bold, color: color), in: body, context: context, snap: snap)
-                    context.restoreGState()
-                }
+                // One dark number over the light fill and the light empty part: no colour break at the edge.
+                drawCentered(makeLine("\(level)", size: size, weight: .bold, color: ink.figure), in: body, context: context, snap: snap)
             }
         } else {
             let outline = NSBezierPath(roundedRect: body.insetBy(dx: 0.5, dy: 0.5), xRadius: 3.4, yRadius: 3.4)

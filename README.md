@@ -11,7 +11,7 @@ Native · on-device · English and German
 </div>
 
 > [!IMPORTANT]
-> **Not notarized yet.** Volta 2.2.0 (build 27) is ad-hoc signed for local development and the `.pkg` is unsigned. A Developer ID signature and Apple notarization are required before it opens on other Macs without a Gatekeeper warning. Nothing in this repository bypasses Gatekeeper.
+> **Not notarized yet.** Volta 2.2.1 (build 28) is ad-hoc signed for local development and the `.pkg` is unsigned. A Developer ID signature and Apple notarization are required before it opens on other Macs without a Gatekeeper warning. Nothing in this repository bypasses Gatekeeper.
 
 <p align="center">
   <img src="docs/screenshots/dashboard.png" alt="Volta dashboard with charge, battery health, app energy use and history" width="46%" />
@@ -20,13 +20,13 @@ Native · on-device · English and German
 
 ## Features
 
-- **Menu-bar battery in color.** Light green above 50 %, light yellow from 21 to 50 %, light red at 20 % or less, with a large, sharp number. Accent and monochrome styles are available.
+- **Menu-bar battery in color.** Light green above 50 %, light yellow from 21 to 50 %, light red at 20 % or less, with a sharp dark number like the macOS battery. Accent and monochrome styles are available.
 - **Dashboard at a glance.** Charge, time remaining with clock time, battery health (maximum capacity, charge cycles, temperature), the apps using the most energy as a simple percentage, and a charge history chart. You can open several sections at once, and the panel never scrolls.
 - **Alerts.** A reminder when the battery runs low and a notice when your charge target is reached, as a card, a card with edge glow, or a system notification.
 - **Accessories.** Battery levels of AirPods, mice and keyboards when macOS reports them.
 - **Everyday settings that work.** Open at login (listed as “Volta” in Login Items), a global shortcut (⌃⌥V by default), Automatic/Light/Dark appearance and a pinned “keep open” dashboard.
 - **Private.** All data stays on your Mac. No account, no cloud, no network needed for battery readings.
-- **English and German.** Choose on first launch; change any time in Settings.
+- **Quick first start.** Choose English or German, allow open at login and notifications, done. Change anything later in Settings.
 
 Advanced extras are off by default: power flow (adapter, battery and system watts) and technical battery values (mAh, voltage, current).
 
@@ -68,7 +68,7 @@ brew install --cask volta
 DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test
 ```
 
-53 tests cover settings defaults and migration, dashboard sections, alerts, login-item migration, appearance, energy-share labels, localization and pixel-level menu-bar rendering.
+57 tests cover settings defaults and migration, dashboard sections, alerts, permissions, login-item migration, appearance, energy-share labels, localization and pixel-level menu-bar rendering.
 
 ```text
 Sources/Volta/               app and UI
@@ -98,9 +98,9 @@ docs/                        release notes and screenshots
 4. Publish:
 
    ```sh
-   git tag v2.2.0 && git push origin v2.2.0
-   gh release create v2.2.0 dist/Volta-2.2.0-macos-universal.zip dist/Volta-2.2.0-installer.pkg \
-     --title 'Volta 2.2.0' --notes-file docs/releases/2.2.0.md
+   git tag v2.2.1 && git push origin v2.2.1
+   gh release create v2.2.1 dist/Volta-2.2.1-macos-universal.zip dist/Volta-2.2.1-installer.pkg \
+     --title 'Volta 2.2.1' --notes-file docs/releases/2.2.1.md
    ```
 
 See [CHANGELOG.md](CHANGELOG.md) for the version history.

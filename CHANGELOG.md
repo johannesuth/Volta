@@ -2,6 +2,20 @@
 
 All notable changes to Volta are recorded here. Dates use ISO 8601.
 
+## [2.2.1] — 2026-11-17
+
+### Changed
+- New first-run setup in the same style as Settings, in three short steps: welcome and language, permissions, and a “you're all set” screen that shows where Volta sits in the menu bar. The welcome sound and the feature tour were removed.
+- The setup asks for both permissions Volta uses before the app starts: **Open at login** and **Notifications**. Each row shows its state (allowed, needs confirmation in System Settings, declined) and links to the right System Settings page. Volta's menu-bar item appears only after setup is finished.
+
+### Fixed
+- The level number in the colored menu-bar battery is one dark color again. Before, a digit that crossed the edge of the fill turned half white. The empty part of the battery is now light gray, like the macOS battery, so the dark number stays readable on both parts in light and dark mode.
+
+### Verification
+- `swift test`: 57 tests passed, including new tests for the uniform number color, number-to-background contrast and the permission states.
+- Checked live with a separate test profile: the setup window appeared before any menu-bar item, macOS showed its notification prompt as “Mitteilungen von „Volta“”, and finishing setup added the menu-bar item and opened the dashboard.
+- Universal app (`arm64`, `x86_64`), ad-hoc signed. The installer is unsigned and nothing is notarized yet.
+
 ## [2.2.0] — 2026-11-17
 
 ### Added

@@ -101,29 +101,52 @@ final class MenuBarGlyphRenderingTests: XCTestCase {
         }
     }
 
-    func testNumberStaysReadableOnBothSidesOfTheFillEdge() {
-        // At 50 % the "5" sits on the coloured fill and the "0" on the empty part of the battery.
-        let image = GlyphPainter.image(snapshot: battery(level: 50), clock: nil, cfg: config(tint: .level),
-                                       darkBar: true, badges: [])
-        let rep = pixels(of: image, scale: 2)
-        let body = GlyphPainter.Metrics.cell
-        let edge = Int(((1 + body.width / 2) * 2).rounded())
-        let top = Int(((GlyphPainter.Metrics.height - body.height) / 2 * 2).rounded()) + 4
-        let bottom = top + Int(body.height * 2) - 8
+    func testNumberHasOneColorOnBothSidesOfTheFillEdge() {
+        // At 64 % the "4" straddles the fill edge; it must not turn half white.
+        for level in [15, 50, 64, 100] {
+            let image = GlyphPainter.image(snapshot: battery(level: level), clock: nil, cfg: config(tint: .level),
+                                           darkBar: true, badges: [])
+            let rep = pixels(of: image, scale: 2)
+            let body = GlyphPainter.Metrics.cell
+            let top = Int(((GlyphPainter.Metrics.height - body.height) / 2 * 2).rounded()) + 3
+            let bottom = top + Int(body.height * 2) - 6
+            let edge = Int(((1 + body.width * CGFloat(level) / 100) * 2).rounded())
 
-        var darkOnFill = 0, lightOnTrack = 0
-        for y in top..<bottom {
-            for x in 6..<(edge - 2) {
-                guard let c = rep.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB), c.alphaComponent > 0.95 else { continue }
-                if luminance(c) < 0.2 { darkOnFill += 1 }
+            var white = 0, darkLeft = 0, darkRight = 0
+            for y in top..<bottom {
+                for x in 4..<(Int(body.width * 2) - 2) {
+                    guard let c = rep.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB), c.alphaComponent > 0.95 else { continue }
+                    if luminance(c) > 0.9 { white += 1 }
+                    if luminance(c) < 0.2 { if x < edge { darkLeft += 1 } else { darkRight += 1 } }
+                }
             }
-            for x in (edge + 2)..<(Int(body.width * 2) - 4) {
-                guard let c = rep.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB), c.alphaComponent > 0.95 else { continue }
-                if luminance(c) > 0.85 { lightOnTrack += 1 }
+            XCTAssertEqual(white, 0, "no white digit parts at \(level) %")
+            if level == 64 {
+                XCTAssertGreaterThan(darkLeft, 30, "dark digits over the fill")
+                XCTAssertGreaterThan(darkRight, 10, "the same dark digits continue over the empty part")
             }
         }
-        XCTAssertGreaterThan(darkOnFill, 30, "digits over the light fill must be dark")
-        XCTAssertGreaterThan(lightOnTrack, 30, "digits over the empty part must be white")
+    }
+
+    func testDarkNumberContrastsWithTheEmptyTrackOnDarkAndLightBars() {
+        func lin(_ v: CGFloat) -> CGFloat { v <= 0.04045 ? v / 12.92 : pow((v + 0.055) / 1.055, 2.4) }
+        func relative(_ c: NSColor) -> CGFloat {
+            let c = c.usingColorSpace(.sRGB)!
+            return 0.2126 * lin(c.redComponent) + 0.7152 * lin(c.greenComponent) + 0.0722 * lin(c.blueComponent)
+        }
+        for (dark, bar) in [(true, CGFloat(0.12)), (false, CGFloat(0.92))] {
+            let ink = GlyphPainter.ink(selection: .level, level: 64, darkBar: dark)
+            let n = ink.neutral.usingColorSpace(.sRGB)!
+            let a = ink.trackAlpha
+            let track = NSColor(srgbRed: bar * (1 - a) + n.redComponent * a, green: bar * (1 - a) + n.greenComponent * a,
+                                blue: bar * (1 - a) + n.blueComponent * a, alpha: 1)
+            let ratio = (relative(track) + 0.05) / (relative(ink.figure) + 0.05)
+            XCTAssertGreaterThan(ratio, 4.0, "number vs empty track contrast on a \(dark ? "dark" : "light") bar: \(ratio)")
+            for band in [LevelBand.high, .medium, .low] {
+                let fill = (relative(GlyphPainter.levelColor(band)) + 0.05) / (relative(ink.figure) + 0.05)
+                XCTAssertGreaterThan(fill, 6.0, "number vs \(band) fill")
+            }
+        }
     }
 
     func testMonochromeNumberIsCutOutOfAnOpaqueBattery() {

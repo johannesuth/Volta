@@ -25,23 +25,32 @@ final class Conductor: NSObject, NSApplicationDelegate {
 
         LoginItem.migrateLegacyAgent()
         syncAppearance()
+        syncShortcut()
+
+        if AppLanguage.shouldPresentOnboarding(languageChosen: ConfigStore.shared.c.languageChosen) {
+            // First launch: language and permissions come first; the menu-bar item appears afterwards.
+            OnboardingWindow.shared.show { [weak self] in
+                self?.startMenuBar()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+                    MainActor.assumeIsolated { self?.presence?.open() }
+                }
+            }
+        } else {
+            startMenuBar()
+        }
+    }
+
+    private func startMenuBar() {
+        guard presence == nil else { return }
         let presence = MenuBarPresence()
         presence.showPreferences = { PreferencesWindow.shared.show() }
         self.presence = presence
-        syncShortcut()
         if !earlyURLs.isEmpty {
             let queued = earlyURLs
             earlyURLs = []
             // The status item needs a moment to get its place in the menu bar.
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self] in
                 MainActor.assumeIsolated { self?.application(NSApp, open: queued) }
-            }
-        }
-
-        if AppLanguage.shouldPresentOnboarding(languageChosen: ConfigStore.shared.c.languageChosen) {
-            Task { @MainActor [weak self] in
-                try? await Task.sleep(for: .milliseconds(900))
-                OnboardingWindow.shared.show { [weak self] in self?.presence?.open() }
             }
         }
     }
@@ -73,7 +82,7 @@ final class Conductor: NSObject, NSApplicationDelegate {
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows: Bool) -> Bool {
-        presence?.open()
+        if let presence { presence.open() } else { OnboardingWindow.shared.bringToFront() }
         return false
     }
 
