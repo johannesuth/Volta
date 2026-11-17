@@ -38,7 +38,8 @@ final class PanelActionsTests: XCTestCase {
         return 0.2126 * c.redComponent + 0.7152 * c.greenComponent + 0.0722 * c.blueComponent
     }
 
-    private func checkBadge(_ scheme: ColorScheme, plate: Color, file: StaticString = #filePath, line: UInt = #line) {
+    private func checkBadge(_ scheme: ColorScheme, plate: Color, file: StaticString = #filePath, line: UInt = #line) throws {
+        try RenderSupport.requireGPU()
         let size: CGFloat = 20
         let view = IconBadge(symbol: "gearshape.fill", hue: Hue.sky, size: size)
             .padding(10)
@@ -55,8 +56,8 @@ final class PanelActionsTests: XCTestCase {
         XCTAssertGreaterThan(fill, 0.04, "the badge is filled with its colour (\(scheme))", file: file, line: line)
     }
 
-    func testIconBadgeIsFramedAndFilledInDarkMode() { checkBadge(.dark, plate: Color(white: 0.17)) }
-    func testIconBadgeIsFramedAndFilledInLightMode() { checkBadge(.light, plate: Color(white: 0.93)) }
+    func testIconBadgeIsFramedAndFilledInDarkMode() throws { try checkBadge(.dark, plate: Color(white: 0.17)) }
+    func testIconBadgeIsFramedAndFilledInLightMode() throws { try checkBadge(.light, plate: Color(white: 0.93)) }
 
     func testRowDividersAreJustSlightlyStrongerThanBefore() {
         // 2.4.2 drew them at 16 % of the text colour; the user asked for a barely more visible line.

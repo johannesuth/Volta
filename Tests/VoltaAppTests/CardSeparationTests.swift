@@ -31,7 +31,8 @@ final class CardSeparationTests: XCTestCase {
         return 0.2126 * c.redComponent + 0.7152 * c.greenComponent + 0.0722 * c.blueComponent
     }
 
-    private func check(_ scheme: ColorScheme, plate: Color, file: StaticString = #filePath, line: UInt = #line) {
+    private func check(_ scheme: ColorScheme, plate: Color, file: StaticString = #filePath, line: UInt = #line) throws {
+        try RenderSupport.requireGPU()
         let rep = render(scheme, plate: plate)
         let cardHeight = tileHeight + 2 * 8               // content + vertical padding
         let gapY = 8 + cardHeight + Dim.cardGap / 2
@@ -45,12 +46,12 @@ final class CardSeparationTests: XCTestCase {
         XCTAssertGreaterThan(edge, 0.06, "the card edge is visible (\(scheme))", file: file, line: line)
     }
 
-    func testCardsAreVisiblySeparatedInDarkMode() {
-        check(.dark, plate: Color(white: 0.17))
+    func testCardsAreVisiblySeparatedInDarkMode() throws {
+        try check(.dark, plate: Color(white: 0.17))
     }
 
-    func testCardsAreVisiblySeparatedInLightMode() {
-        check(.light, plate: Color(white: 0.89))
+    func testCardsAreVisiblySeparatedInLightMode() throws {
+        try check(.light, plate: Color(white: 0.89))
     }
 
     func testGapBetweenCardsIsSmallButClear() {
