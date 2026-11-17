@@ -2,23 +2,32 @@ import XCTest
 @testable import Volta
 
 final class TileExpansionTests: XCTestCase {
-    func testOpeningAnotherSectionCollapsesThePreviousOne() {
+    func testSeveralSectionsCanStayOpenTogether() {
         var expansion = TileExpansion()
         XCTAssertFalse(expansion.contains(.trend))
 
         expansion.toggle(.trend)
+        expansion.toggle(.balance)
         XCTAssertTrue(expansion.contains(.trend))
+        XCTAssertTrue(expansion.contains(.balance))
 
-        expansion.toggle(.vitals)
+        expansion.toggle(.trend)
         XCTAssertFalse(expansion.contains(.trend))
-        XCTAssertTrue(expansion.contains(.vitals))
-
-        expansion.toggle(.vitals)
-        XCTAssertFalse(expansion.contains(.vitals))
+        XCTAssertTrue(expansion.contains(.balance))
     }
 
-    func testDashboardOpensWithTheSmallPowerFlowSectionExpanded() {
-        XCTAssertTrue(TileExpansion.opening(shown: [.charge, .balance, .trend]).contains(.balance))
-        XCTAssertNil(TileExpansion.opening(shown: [.charge, .trend]).expandedTile)
+    func testCollapsingForSpaceClosesTheEarliestOpenedSection() {
+        var expansion = TileExpansion(openTiles: [.vitals, .trend, .balance])
+
+        XCTAssertTrue(expansion.collapseOldest())
+        XCTAssertEqual(expansion.openTiles, [.trend, .balance])
+
+        var empty = TileExpansion()
+        XCTAssertFalse(empty.collapseOldest())
+    }
+
+    func testBatteryHealthIsOpenByDefaultAndHistoryStaysCollapsed() {
+        XCTAssertEqual(Config().expansion.openTiles, [.vitals])
+        XCTAssertFalse(Config().expansion.contains(.trend))
     }
 }

@@ -9,13 +9,13 @@ A native, on-device utility for charge, power draw, battery history and connecte
 </div>
 
 > [!IMPORTANT]
-> **Release status: prepared, not notarized.** Volta 2.1.4 (build 25) is locally ad-hoc signed for development, and the `.pkg` is unsigned. It is not yet a Gatekeeper-trusted public release. A valid Apple Developer ID certificate and Apple notarization are required before distributing a build that opens without a security warning. This repository does not bypass Gatekeeper or change macOS security settings.
+> **Release status: prepared, not notarized.** Volta 2.1.5 (build 26) is locally ad-hoc signed for development, and the `.pkg` is unsigned. It is not yet a Gatekeeper-trusted public release. A valid Apple Developer ID certificate and Apple notarization are required before distributing a build that opens without a security warning. This repository does not bypass Gatekeeper or change macOS security settings.
 
 ## At a glance
 
 | | |
 |---|---|
-| **Version** | 2.1.4 (build 25) |
+| **Version** | 2.1.5 (build 26) |
 | **Platform** | macOS 15 or later |
 | **Architectures** | Apple silicon and Intel (universal binary) |
 | **Languages** | Deutsch / English; selected on first launch and changeable in Settings |
@@ -33,7 +33,8 @@ A native, on-device utility for charge, power draw, battery history and connecte
 ## Features
 
 - A crisp, vector-drawn menu-bar battery with a large level figure, selectable icon colors, several styles and optional live power information.
-- A fixed-size, scroll-free dashboard. Charge, an opened power-flow section and a collapsed history header are enabled by default; battery health, accessories and app-energy sections remain off until enabled. The history chart loads only when opened.
+- A compact, scroll-free dashboard with everyday battery information by default: charge level and time remaining, battery health (maximum capacity, charge cycles, temperature) and a collapsed history chart. Click any section title to expand or collapse it; several sections can be open at once, and the panel always fits on screen.
+- Advanced extras are off by default and can be enabled in Settings: power flow, per-app energy use and technical battery values (mAh, voltage, current).
 - Charge history, CSV export, and import from the macOS power log.
 - Threshold alerts with optional sound, quiet hours, edge glow and notification cards.
 - Battery levels for supported connected accessories, when reported by macOS.
@@ -51,7 +52,7 @@ The Desktop release folder includes `Volta.app`, an installer package, and `Inst
 
 - **`.pkg`:** installs Volta into `/Applications` and may request administrator approval. The current locally generated package is unsigned; do not treat it as a trusted public installer.
 - **`Install Volta.command`:** installs Volta for the current user into `~/Applications/Volta.app`, without requiring administrator access. The script itself is unsigned and not notarized; treat it as a local development helper. For distribution, use the signed and notarized app/package from a release rather than bypassing Gatekeeper.
-- **ZIP:** unzip `Volta-2.1.4-macos-universal.zip` and move `Volta.app` to Applications. The current ZIP contains an ad-hoc signed, non-notarized build.
+- **ZIP:** unzip `Volta-2.1.5-macos-universal.zip` and move `Volta.app` to Applications. The current ZIP contains an ad-hoc signed, non-notarized build.
 
 The local installer is useful for development and testing. It cannot make an unsigned app trusted by other Macs.
 
@@ -95,7 +96,7 @@ On first launch, choose **Deutsch** or **English**, review the short setup, and 
 - **Open Settings:** right-click the menu-bar icon and choose **Settings…**, or use **⌘,** from the dashboard.
 - **Change language:** Settings → General → App language.
 - **Adjust the menu-bar item:** Settings → Menu Bar.
-- **Choose dashboard sections and content:** Settings → Dashboard. Charge, power flow and collapsed history start enabled; open one optional section at a time.
+- **Choose dashboard sections and content:** Settings → Dashboard. Battery health and history are on by default; power flow, app energy use and technical battery values are under **Advanced**.
 - **Configure charge alerts and quiet hours:** Settings → Alerts.
 - **Manage accessory visibility and order:** Settings → Accessories.
 - **Export or clear history:** Settings → Data.
@@ -106,7 +107,7 @@ On first launch, choose **Deutsch** or **English**, review the short setup, and 
 |---|---|
 | **General** | App language, login launch, global shortcut, sampling intervals, appearance, accent, temperature units, watt precision and reset. |
 | **Menu Bar** | Icon style, charge percentage, power readout, accessory badges and when the number is hidden. |
-| **Dashboard** | Keep-open behavior, section visibility (power flow and collapsed history on by default), chart range, app rows and accessory order. The dashboard size is fixed. |
+| **Dashboard** | Keep-open behavior, sections (battery health, history, accessories), advanced extras (power flow, app energy use, technical battery values), chart range, app rows and accessory order. |
 | **Alerts** | Low-charge and charge-target thresholds, visual presentation, sound, volume, notification delivery and quiet hours. |
 | **Accessories** | Accessory scan interval, ordering, dashboard/menu-bar visibility and forgetting known devices. |
 | **Data** | Default history range, retention, CSV export, macOS power-log import, clear-history action and storage folder. |
@@ -151,12 +152,12 @@ The source project is prepared for `johannesuth/volta` under the account `Johann
 gh repo create volta --description "Native macOS menu-bar app for battery charge, power flow, health and history" --source . --remote origin --push
 
 # Only after Developer ID signing, notarization and checksum refresh:
-git tag v2.1.4
-gh release create v2.1.4 \
-  dist/Volta-2.1.4-macos-universal.zip \
-  dist/Volta-2.1.4-installer.pkg \
-  --title 'Volta 2.1.4' \
-  --notes-file docs/releases/2.1.4.md
+git tag v2.1.5
+gh release create v2.1.5 \
+  dist/Volta-2.1.5-macos-universal.zip \
+  dist/Volta-2.1.5-installer.pkg \
+  --title 'Volta 2.1.5' \
+  --notes-file docs/releases/2.1.5.md
 ```
 
 Run the release commands only after signing, notarization, checksum refresh and final review. Verify the generated checksums in `dist/SHA256SUMS.txt`. The repository ignores generated build and distribution artifacts; attach the ZIP and package as GitHub Release assets, not as source files.

@@ -2,12 +2,26 @@
 
 All notable changes to Volta are recorded here. Dates use ISO 8601.
 
+## [2.1.5] — 2026-11-17
+
+### Changed
+- Dashboard sections are now independent: several can be open at the same time. The open/closed state is saved. If the panel would not fit on screen, the section that has been open longest folds away, so the panel never scrolls.
+- Default sections now cover everyday battery information: charge, battery health (opened) and history (collapsed). Power flow and app energy use are off by default and grouped under Settings → Dashboard → Advanced. Untouched 2.1.3/2.1.4 defaults move to the new default; custom choices are kept.
+- Battery health now shows maximum capacity, charge cycles and temperature. mAh, voltage and current are behind the new opt-in setting **Technical battery values**.
+
+### Fixed
+- History chart time labels now follow the app language. They read “07 Uhr” in German instead of “07 Uhr Uhr”.
+
+### Verification
+- `swift test`: 35 tests passed, including the new section, default-migration and chart-label tests.
+- Universal app (`arm64`, `x86_64`), ad-hoc signed; the installer is unsigned and nothing is notarized yet.
+
 ## [2.1.4] — 2026-11-17
 
 ### Changed
 - Rebuilt the menu-bar icon renderer. The icon is now vector-drawn by AppKit at the display's own pixel density on whole-point bounds. Previously it was a pre-rendered bitmap with a fractional width (31.8 pt) that macOS resampled, which softened the number.
 - Enlarged the battery to 32 × 15 pt with a 12 pt bold level figure. Colored icons use a brighter fill with near-black digits; the monochrome icon cuts the digits out of the battery body.
-- Power flow (opened) and History (collapsed) are now enabled by default; battery health, accessories and app energy use remain off. Settings that still match the 2.1.3 all-off default move to the new default; other choices are kept. The chart loads only when History is expanded.
+- Power flow (opened) and History (collapsed) were enabled by default (superseded in 2.1.5).
 - Added GitHub project files: macOS CI workflow, issue templates, contribution notes, a security policy and release notes.
 
 ### Verification

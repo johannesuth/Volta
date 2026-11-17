@@ -173,6 +173,11 @@ final class MenuBarPresence: NSObject {
     /// Keeps the dropdown hanging from the menu bar, centred on the icon, inside the screen.
     private func place(size: CGSize) {
         guard let window, let a = anchor, size.width > 10, size.height > 10 else { return }
+        // Never let the panel run off the screen: fold the section that has been open longest.
+        if size.height > a.top - a.screen.minY - 6 {
+            var expansion = ConfigStore.shared.c.expansion
+            if expansion.collapseOldest() { ConfigStore.shared.c.expansion = expansion }
+        }
         var x = a.midX - size.width / 2
         x = min(max(x, a.screen.minX + 6), a.screen.maxX - size.width - 6)
         let frame = NSRect(x: x.rounded(), y: (a.top - size.height).rounded(), width: size.width.rounded(), height: size.height.rounded())

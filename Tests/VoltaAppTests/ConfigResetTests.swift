@@ -22,16 +22,24 @@ final class ConfigResetTests: XCTestCase {
         XCTAssertEqual(reset.pollSeconds, 20)
     }
 
-    func testDashboardDefaultsToChargeFlowAndHistoryWithFewerAppRows() {
+    func testDashboardDefaultsToEverydayBatteryInformation() {
         let config = Config()
-        XCTAssertEqual(config.hiddenTiles, [.vitals, .gadgets, .apps])
-        XCTAssertEqual(config.tiles.filter { !config.hiddenTiles.contains($0) }, [.charge, .balance, .trend])
+        XCTAssertEqual(config.hiddenTiles, [.balance, .gadgets, .apps])
+        XCTAssertEqual(config.tiles.filter { !config.hiddenTiles.contains($0) }, [.charge, .vitals, .trend])
+        XCTAssertFalse(config.showBatteryDetails, "mAh, voltage and current are opt-in technical values")
         XCTAssertEqual(config.appRows, 3)
     }
 
-    func testPreviousAllHiddenDefaultMigratesToTheNewDefaultSections() {
+    func testEarlierUntouchedDefaultsMigrateToTheEverydaySections() {
         XCTAssertEqual(Config.migratedHiddenTiles([.trend, .vitals, .gadgets, .apps, .balance]), Config.defaultHiddenTiles)
+        XCTAssertEqual(Config.migratedHiddenTiles([.vitals, .gadgets, .apps]), Config.defaultHiddenTiles)
         XCTAssertEqual(Config.migratedHiddenTiles([]), Config.defaultHiddenTiles)
         XCTAssertEqual(Config.migratedHiddenTiles([.trend, .apps]), [.trend, .apps])
+    }
+
+    func testEarlierDefaultSectionOrderMigratesButCustomOrderIsKept() {
+        XCTAssertEqual(Config.migratedTileOrder([.charge, .balance, .trend, .vitals, .gadgets, .apps]), Config.defaultTileOrder)
+        let custom: [TileKind] = [.charge, .apps, .trend, .vitals, .balance, .gadgets]
+        XCTAssertEqual(Config.migratedTileOrder(custom), custom)
     }
 }

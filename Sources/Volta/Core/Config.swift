@@ -73,22 +73,29 @@ enum TileKind: String, Codable, CaseIterable, Identifiable {
     }
 }
 
-struct TileExpansion: Equatable {
-    private(set) var expandedTile: TileKind?
+/// Which dashboard sections are unfolded. Any number can be open; the order records when each
+/// was opened so the earliest one can fold away if the panel would not fit on screen.
+struct TileExpansion: Codable, Equatable {
+    private(set) var openTiles: [TileKind]
 
-    init(expandedTile: TileKind? = nil) {
-        self.expandedTile = expandedTile
+    init(openTiles: [TileKind] = []) {
+        self.openTiles = openTiles
     }
 
-    /// The compact power-flow section opens with the dashboard; larger sections wait for a click.
-    static func opening(shown: [TileKind]) -> TileExpansion {
-        TileExpansion(expandedTile: shown.contains(.balance) ? .balance : nil)
-    }
+    static let standard = TileExpansion(openTiles: [.vitals])
 
-    func contains(_ tile: TileKind) -> Bool { expandedTile == tile }
+    func contains(_ tile: TileKind) -> Bool { openTiles.contains(tile) }
 
     mutating func toggle(_ tile: TileKind) {
-        expandedTile = expandedTile == tile ? nil : tile
+        if contains(tile) { openTiles.removeAll { $0 == tile } } else { openTiles.append(tile) }
+    }
+
+    /// Folds the section that has been open longest. Returns `false` when nothing is open.
+    @discardableResult
+    mutating func collapseOldest() -> Bool {
+        guard !openTiles.isEmpty else { return false }
+        openTiles.removeFirst()
+        return true
     }
 }
 
@@ -187,15 +194,26 @@ struct Config: Codable, Equatable {
 
     // Dropdown
     var stickyDropdown = false
-    var tiles: [TileKind] = TileKind.allCases
+    static let defaultTileOrder: [TileKind] = [.charge, .vitals, .trend, .balance, .gadgets, .apps]
+    var tiles: [TileKind] = Config.defaultTileOrder
     static let optionalTiles: [TileKind] = [.balance, .trend, .vitals, .gadgets, .apps]
-    static let defaultHiddenTiles: [TileKind] = [.vitals, .gadgets, .apps]
+    /// Everyday information is shown by default; power flow and per-app energy are advanced extras.
+    static let defaultHiddenTiles: [TileKind] = [.balance, .gadgets, .apps]
     var hiddenTiles: [TileKind] = Config.defaultHiddenTiles
+    var expansion = TileExpansion.standard
+    /// mAh, voltage and current in the battery-health section.
+    var showBatteryDetails = false
 
-    /// Version 2.1.3 hid every optional section by default; that untouched state moves to the newer,
-    /// slightly richer default. Any other user choice is kept.
+    /// Untouched defaults from 2.1.3 (everything hidden) and 2.1.4 (power flow and history) move to
+    /// the current default. Any other user choice is kept.
     static func migratedHiddenTiles(_ stored: [TileKind]) -> [TileKind] {
-        stored.isEmpty || Set(stored) == Set(optionalTiles) ? defaultHiddenTiles : stored
+        let earlierDefaults: [Set<TileKind>] = [Set(optionalTiles), [.vitals, .gadgets, .apps]]
+        return stored.isEmpty || earlierDefaults.contains(Set(stored)) ? defaultHiddenTiles : stored
+    }
+
+    /// The earlier default order listed history before battery health; a custom order is kept.
+    static func migratedTileOrder(_ stored: [TileKind]) -> [TileKind] {
+        stored == TileKind.allCases ? defaultTileOrder : stored
     }
     var chartSpan: ChartSpan = .day
     var appRows = 3
@@ -287,6 +305,7 @@ final class ConfigStore {
         if storedObject["hiddenTiles"] != nil {
             cfg.hiddenTiles = Config.migratedHiddenTiles(cfg.hiddenTiles)
         }
+        cfg.tiles = Config.migratedTileOrder(cfg.tiles)
         if storedObject["appRows"] as? Int == 5 {
             cfg.appRows = 3
         }

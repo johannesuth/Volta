@@ -1,5 +1,6 @@
 import SwiftUI
 import Charts
+import VoltaLanguageCore
 
 // MARK: - Root
 
@@ -8,8 +9,7 @@ struct DropdownRoot: View {
     var openPreferences: () -> Void
     var dismiss: () -> Void
 
-    @State private var expansion = TileExpansion.opening(shown: ConfigStore.shared.shownTiles)
-    private let store = ConfigStore.shared
+    @Bindable private var store = ConfigStore.shared
 
     var body: some View {
         let cfg = store.c
@@ -37,9 +37,9 @@ struct DropdownRoot: View {
         .overlay(RoundedRectangle(cornerRadius: dim(18), style: .continuous).stroke(.primary.opacity(0.07), lineWidth: 0.5))
         .environment(\.dim, dim)
         .environment(\.locale, Locale(identifier: cfg.language.localeIdentifier))
-        .environment(\.tileExpansion, $expansion)
+        .environment(\.tileExpansion, $store.c.expansion)
         .tint(Hue.accent)
-        .animation(.snappy(duration: 0.18), value: expansion.expandedTile)
+        .animation(.snappy(duration: 0.18), value: store.c.expansion)
     }
 }
 
@@ -188,6 +188,16 @@ private struct BalanceTile: View {
 
 // MARK: - Trend chart
 
+/// Time-axis captions in the app's own language rather than the system locale.
+enum ChartAxisLabel {
+    static func text(for date: Date, span: ChartSpan, language: AppLanguage) -> String {
+        let style = Date.FormatStyle(locale: Locale(identifier: language.localeIdentifier))
+        return span == .week
+            ? date.formatted(style.weekday(.abbreviated))
+            : date.formatted(style.hour(.twoDigits(amPM: .omitted)))
+    }
+}
+
 private struct TrendTile: View {
     @Environment(\.dim) private var dim
     @Environment(\.tileExpansion) private var expansion
@@ -240,7 +250,7 @@ private struct TrendTile: View {
                     AxisMarks(values: .stride(by: store.c.chartSpan == .week ? .day : .hour, count: store.c.chartSpan == .week ? 1 : (store.c.chartSpan == .day ? 6 : 2))) { v in
                         AxisValueLabel(collisionResolution: .greedy) {
                             if let d = v.as(Date.self) {
-                                Text(store.c.chartSpan == .week ? d.formatted(.dateTime.weekday(.abbreviated)) : d.formatted(.dateTime.hour(.twoDigits(amPM: .omitted))) + Copy.text(" Uhr", " h"))
+                                Text(ChartAxisLabel.text(for: d, span: store.c.chartSpan, language: store.c.language))
                                     .font(dim.text(8.5))
                                     .foregroundStyle(Color.secondary)
                             }
@@ -259,7 +269,7 @@ private struct TrendTile: View {
                 }
             }
         }
-        .task(id: "\(span.rawValue)-\(String(describing: expansion.wrappedValue.expandedTile))") {
+        .task(id: "\(span.rawValue)-\(expansion.wrappedValue.contains(.trend))") {
             if expansion.wrappedValue.contains(.trend) { reload() }
         }
         .onChange(of: telemetry.now.level) {
@@ -299,6 +309,7 @@ private struct TrendTile: View {
 private struct VitalsTile: View {
     @Environment(\.dim) private var dim
     private let telemetry = Telemetry.shared
+    private let store = ConfigStore.shared
 
     var body: some View {
         let s = telemetry.now
@@ -313,18 +324,20 @@ private struct VitalsTile: View {
         )) {
             HStack(alignment: .firstTextBaseline, spacing: dim(3)) {
                 Text(String(format: "%.0f", wear)).font(dim.number(24, .bold))
-                Text(Copy.text("% der ursprünglichen Kapazität", "% of design capacity")).font(dim.text(11)).foregroundStyle(.secondary)
+                Text(Copy.text("% maximale Kapazität", "% maximum capacity")).font(dim.text(11)).foregroundStyle(.secondary)
                 Spacer()
             }
             Meter(fraction: wear / 100, tint: Hue.accent, thickness: dim(4))
             Grid(alignment: .leading, horizontalSpacing: dim(10), verticalSpacing: dim(9)) {
                 GridRow {
                     Figure(caption: Copy.text("Ladezyklen", "Charge cycles"), value: "\(s.cycles)", icon: "arrow.triangle.2.circlepath", tint: Hue.accent)
-                    Figure(caption: Copy.text("Aktuell / ab Werk", "Full / Design"), value: "\(s.fullMAh) / \(s.designMAh) mAh", icon: "battery.100percent", tint: Hue.accent)
+                    Figure(caption: Copy.text("Temperatur", "Temperature"), value: s.celsius.map(store.degrees) ?? "–", icon: "thermometer.medium", tint: Hue.accent)
                 }
-                GridRow {
-                    Figure(caption: Copy.text("Spannung", "Voltage"), value: String(format: "%.2f V", s.volts), icon: "bolt.fill", tint: Hue.accent)
-                    Figure(caption: Copy.text("Stromstärke", "Current"), value: String(format: "%.0f mA", s.milliamps), icon: "waveform.path", tint: Hue.accent)
+                if store.c.showBatteryDetails {
+                    GridRow {
+                        Figure(caption: Copy.text("Kapazität jetzt / ab Werk", "Full / design capacity"), value: "\(s.fullMAh) / \(s.designMAh) mAh", icon: "battery.100percent", tint: Hue.accent)
+                        Figure(caption: Copy.text("Spannung · Strom", "Voltage · current"), value: String(format: "%.2f V · %.0f mA", s.volts, s.milliamps), icon: "bolt.fill", tint: Hue.accent)
+                    }
                 }
             }
         }

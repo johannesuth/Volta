@@ -274,22 +274,26 @@ private struct DropdownPrefs: View {
             } header: {
                 Text(Copy.text("Verhalten", "Behavior"))
             } footer: {
-                Text(Copy.text("Das Fenster bleibt kompakt. Zusatzbereiche kannst du bei Bedarf öffnen.",
-                               "The panel stays compact. Open extra sections only when you need them."))
+                Text(Copy.text("Bereiche lassen sich mit einem Klick auf die Überschrift auf- und zuklappen, auch mehrere gleichzeitig.",
+                               "Click a section title to expand or collapse it; several can be open at once."))
             }
 
             Section {
-                ForEach(TileKind.allCases.filter { $0 != .charge }) { tile in
-                    Toggle(isOn: Binding(get: { !store.c.hiddenTiles.contains(tile) },
-                                         set: { store.toggleTile(tile, on: $0) })) {
-                        Label(tile.title, systemImage: tile.icon)
-                    }
+                ForEach([TileKind.vitals, .trend, .gadgets]) { tile in tileToggle(tile) }
+            } header: {
+                Text(Copy.text("Bereiche", "Sections"))
+            }
+
+            Section {
+                ForEach([TileKind.balance, .apps]) { tile in tileToggle(tile) }
+                Toggle(isOn: $store.c.showBatteryDetails) {
+                    Label(Copy.text("Technische Akkuwerte (mAh, Spannung, Strom)", "Technical battery values (mAh, voltage, current)"),
+                          systemImage: "gauge.with.dots.needle.33percent")
                 }
             } header: {
-                Text(Copy.text("Zusatzbereiche", "Optional sections"))
+                Text(Copy.text("Für Fortgeschrittene", "Advanced"))
             } footer: {
-                Text(Copy.text("Ausgeschaltete Bereiche erscheinen nicht im Dropdown. Eingeschaltete Bereiche sind zunächst eingeklappt.",
-                               "Disabled sections stay out of the panel. Enabled sections start collapsed."))
+                Text(Copy.text("Diese Werte sind standardmäßig ausgeschaltet.", "These are off by default."))
             }
 
             Section {
@@ -306,6 +310,13 @@ private struct DropdownPrefs: View {
             }
         }
         .formStyle(.grouped)
+    }
+
+    private func tileToggle(_ tile: TileKind) -> some View {
+        Toggle(isOn: Binding(get: { !store.c.hiddenTiles.contains(tile) },
+                             set: { store.toggleTile(tile, on: $0) })) {
+            Label(tile.title, systemImage: tile.icon)
+        }
     }
 }
 
