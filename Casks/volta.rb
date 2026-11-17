@@ -1,6 +1,6 @@
 cask "volta" do
-  version "2.2.1"
-  sha256 "7d710aeb6224836af823c2ec158d4e7026715224ce0b8e666acd843ab2f86a80"
+  version "2.2.2"
+  sha256 "f113d55a546000a3b1600282a16cdcc36a832e1a939e0e2085d0c9bc47f7cdbb"
 
   url "https://github.com/johannesuth/volta/releases/download/v#{version}/Volta-#{version}-macos-universal.zip"
   name "Volta"
@@ -9,7 +9,7 @@ cask "volta" do
 
   depends_on macos: ">= :sequoia"
 
-  # The checksum matches the local ad-hoc 2.2.1 build. Replace it with the SHA-256 of the
+  # The checksum matches the local ad-hoc 2.2.2 build. Replace it with the SHA-256 of the
   # final notarized release ZIP before publishing this Cask.
   app "Volta.app"
 end

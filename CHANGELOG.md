@@ -2,6 +2,15 @@
 
 All notable changes to Volta are recorded here. Dates use ISO 8601.
 
+## [2.2.2] — 2026-11-17
+
+### Changed
+- The number in the menu-bar battery is about 13 % larger (13 pt, “100” at 11.5 pt) so it is easier to read from a distance. The battery keeps its compact 30 × 14 pt size.
+
+### Verification
+- `swift test`: 57 tests passed; the rendering test now requires digits at least 8.5 pt tall.
+- Universal app (`arm64`, `x86_64`), ad-hoc signed. The installer is unsigned and nothing is notarized yet.
+
 ## [2.2.1] — 2026-11-17
 
 ### Changed

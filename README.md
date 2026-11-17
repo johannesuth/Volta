@@ -11,7 +11,7 @@ Native · on-device · English and German
 </div>
 
 > [!IMPORTANT]
-> **Not notarized yet.** Volta 2.2.1 (build 28) is ad-hoc signed for local development and the `.pkg` is unsigned. A Developer ID signature and Apple notarization are required before it opens on other Macs without a Gatekeeper warning. Nothing in this repository bypasses Gatekeeper.
+> **Not notarized yet.** Volta 2.2.2 (build 29) is ad-hoc signed for local development and the `.pkg` is unsigned. A Developer ID signature and Apple notarization are required before it opens on other Macs without a Gatekeeper warning. Nothing in this repository bypasses Gatekeeper.
 
 <p align="center">
   <img src="docs/screenshots/dashboard.png" alt="Volta dashboard with charge, battery health, app energy use and history" width="46%" />
@@ -98,9 +98,9 @@ docs/                        release notes and screenshots
 4. Publish:
 
    ```sh
-   git tag v2.2.1 && git push origin v2.2.1
-   gh release create v2.2.1 dist/Volta-2.2.1-macos-universal.zip dist/Volta-2.2.1-installer.pkg \
-     --title 'Volta 2.2.1' --notes-file docs/releases/2.2.1.md
+   git tag v2.2.2 && git push origin v2.2.2
+   gh release create v2.2.2 dist/Volta-2.2.2-macos-universal.zip dist/Volta-2.2.2-installer.pkg \
+     --title 'Volta 2.2.2' --notes-file docs/releases/2.2.2.md
    ```
 
 See [CHANGELOG.md](CHANGELOG.md) for the version history.

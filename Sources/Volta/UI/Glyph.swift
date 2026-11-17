@@ -32,8 +32,8 @@ enum GlyphPainter {
         static let cellRadius: CGFloat = 4
         static let nub = CGSize(width: 2, height: 4.5)
         static let nubGap: CGFloat = 1
-        static let number: CGFloat = 11.5
-        static let numberFull: CGFloat = 10
+        static let number: CGFloat = 13
+        static let numberFull: CGFloat = 11.5
         static let caption: CGFloat = 13
         static let badgeText: CGFloat = 11.5
         static let ring: CGFloat = 18
