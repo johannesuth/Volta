@@ -1,3 +1,6 @@
+// Volta · Copyright © 2026 Johannes Uth. All rights reserved.
+// Source-available under the Volta License (see LICENSE). Not for redistribution.
+
 import SwiftUI
 import Charts
 import VoltaLanguageCore
@@ -197,9 +200,10 @@ private struct BalanceTile: View {
 enum ChartAxisLabel {
     static func text(for date: Date, span: ChartSpan, language: AppLanguage) -> String {
         let style = Date.FormatStyle(locale: Locale(identifier: language.localeIdentifier))
-        return span == .week
-            ? date.formatted(style.weekday(.abbreviated))
-            : date.formatted(style.hour(.twoDigits(amPM: .omitted)))
+        if span == .week { return date.formatted(style.weekday(.abbreviated)) }
+        return language == .german
+            ? date.formatted(style.hour(.twoDigits(amPM: .omitted)))
+            : date.formatted(Date.FormatStyle(locale: Locale(identifier: "en_US")).hour(.defaultDigits(amPM: .abbreviated)))
     }
 }
 
@@ -208,62 +212,25 @@ private struct TrendTile: View {
     @Environment(\.tileExpansion) private var expansion
     @Bindable private var store = ConfigStore.shared
     @State private var marks: [Mark] = []
+    @State private var hovered: Mark?
     private let telemetry = Telemetry.shared
     private var span: ChartSpan { store.c.chartSpan }
+    private var open: Bool { expansion.wrappedValue.contains(.trend) }
+
+    private let batteryColor = Hue.accent
+    private let chargingColor = Hue.good
 
     var body: some View {
-        Tile(kind: .trend, trailing: AnyView(
-            Menu {
-                Picker("", selection: $store.c.chartSpan) { ForEach(ChartSpan.allCases) { Text($0.title).tag($0) } }.pickerStyle(.inline)
-            } label: {
-                HStack(spacing: dim(3)) {
-                    Text(store.c.chartSpan.title)
-                    Image(systemName: "chevron.down").font(dim.text(8, .semibold))
-                }
-                .font(dim.text(10, .medium)).foregroundStyle(.secondary)
-            }
-            .menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize()
-        )) {
+        Tile(kind: .trend, trailing: open ? AnyView(SpanSwitch(span: $store.c.chartSpan)) : nil) {
             if marks.count < 2 {
-                Text(Copy.text("Der Verlauf erscheint, sobald ein paar Messpunkte gesammelt sind.", "History appears after a few measurements are collected."))
+                Text(Copy.text("Der Verlauf erscheint, sobald ein paar Messpunkte gesammelt sind.",
+                               "History appears after a few measurements are collected."))
                     .font(dim.text(11)).foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, minHeight: dim(70), alignment: .leading)
             } else {
-                Chart {
-                    ForEach(mainsStretches, id: \.0) { stretch in
-                        RectangleMark(xStart: .value("von", stretch.0), xEnd: .value("bis", stretch.1))
-                            .foregroundStyle(Hue.accent.opacity(0.08))
-                    }
-                    ForEach(marks) { m in
-                        AreaMark(x: .value(Copy.text("Zeit", "Time"), m.date), y: .value("%", m.p))
-                            .interpolationMethod(.monotone)
-                            .foregroundStyle(Hue.accent.opacity(0.14))
-                        LineMark(x: .value(Copy.text("Zeit", "Time"), m.date), y: .value("%", m.p))
-                            .interpolationMethod(.monotone)
-                            .lineStyle(.init(lineWidth: dim(2), lineCap: .round))
-                            .foregroundStyle(Hue.accent)
-                    }
-                }
-                .chartYScale(domain: 0...100)
-                .chartYAxis {
-                    AxisMarks(position: .trailing, values: [0, 50, 100]) { v in
-                        AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5, dash: [2, 3])).foregroundStyle(.secondary.opacity(0.3))
-                        AxisValueLabel { Text("\(v.as(Int.self) ?? 0)").font(dim.text(8.5)).foregroundStyle(Color.secondary) }
-                    }
-                }
-                .chartXAxis {
-                    AxisMarks(values: .stride(by: store.c.chartSpan == .week ? .day : .hour, count: store.c.chartSpan == .week ? 1 : (store.c.chartSpan == .day ? 6 : 2))) { v in
-                        AxisValueLabel(collisionResolution: .greedy) {
-                            if let d = v.as(Date.self) {
-                                Text(ChartAxisLabel.text(for: d, span: store.c.chartSpan, language: store.c.language))
-                                    .font(dim.text(8.5))
-                                    .foregroundStyle(Color.secondary)
-                            }
-                        }
-                    }
-                }
-                .frame(height: dim(96))
-
+                chart
+                    .frame(height: dim(112))
+                legend
                 HStack(spacing: dim(10)) {
                     Figure(caption: Copy.text("Ø Entladung", "Avg. discharge"), value: Journal.lossPerHour(marks.filter { $0.w != nil }).map {
                         Copy.text(String(format: "%.1f %%/Std.", $0), String(format: "%.1f %%/hr", $0))
@@ -274,11 +241,109 @@ private struct TrendTile: View {
                 }
             }
         }
-        .task(id: "\(span.rawValue)-\(expansion.wrappedValue.contains(.trend))") {
-            if expansion.wrappedValue.contains(.trend) { reload() }
+        .task(id: "\(span.rawValue)-\(open)") {
+            if open { reload() }
         }
         .onChange(of: telemetry.now.level) {
-            if expansion.wrappedValue.contains(.trend) { reload() }
+            if open { reload() }
+        }
+    }
+
+    private var chart: some View {
+        let segments = TrendSegment.split(marks, maxGap: span.maxGap)
+        let last = marks.last
+        return Chart {
+            ForEach(segments) { segment in
+                let color = segment.charging ? chargingColor : batteryColor
+                ForEach(segment.points, id: \.t) { m in
+                    AreaMark(x: .value("t", m.date), yStart: .value("0", 0), yEnd: .value("%", m.p),
+                             series: .value("s", segment.id))
+                        .interpolationMethod(.monotone)
+                        .foregroundStyle(LinearGradient(colors: [color.opacity(0.30), color.opacity(0.02)],
+                                                        startPoint: .top, endPoint: .bottom))
+                    LineMark(x: .value("t", m.date), y: .value("%", m.p), series: .value("s", segment.id))
+                        .interpolationMethod(.monotone)
+                        .lineStyle(StrokeStyle(lineWidth: dim(2.2), lineCap: .round, lineJoin: .round))
+                        .foregroundStyle(color)
+                }
+            }
+            if let hovered {
+                RuleMark(x: .value("t", hovered.date))
+                    .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
+                    .foregroundStyle(.secondary.opacity(0.6))
+                    .annotation(position: .top, spacing: dim(2),
+                                overflowResolution: .init(x: .fit(to: .chart), y: .disabled)) {
+                        Text(TrendReadout.text(level: hovered.p, at: hovered.date, span: span, language: store.c.language))
+                            .font(dim.number(9.5, .semibold))
+                            .padding(.horizontal, dim(7)).padding(.vertical, dim(3))
+                            .background(.regularMaterial, in: Capsule())
+                            .overlay(Capsule().stroke(.primary.opacity(0.1), lineWidth: 0.5))
+                    }
+                PointMark(x: .value("t", hovered.date), y: .value("%", hovered.p))
+                    .symbolSize(dim(45))
+                    .foregroundStyle(hovered.ac ? chargingColor : batteryColor)
+            } else if let last {
+                let color = last.ac ? chargingColor : batteryColor
+                PointMark(x: .value("t", last.date), y: .value("%", last.p))
+                    .symbolSize(dim(150))
+                    .foregroundStyle(color.opacity(0.22))
+                PointMark(x: .value("t", last.date), y: .value("%", last.p))
+                    .symbolSize(dim(40))
+                    .foregroundStyle(color)
+            }
+        }
+        .chartYScale(domain: 0...100)
+        .chartXScale(domain: (Date.now - span.interval)...Date.now)
+        .chartYAxis {
+            AxisMarks(position: .trailing, values: [0, 50, 100]) { v in
+                AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5)).foregroundStyle(.primary.opacity(0.08))
+                AxisValueLabel {
+                    Text("\(v.as(Int.self) ?? 0)").font(dim.number(8.5, .medium)).foregroundStyle(Color.secondary)
+                }
+            }
+        }
+        .chartXAxis {
+            AxisMarks(values: .stride(by: span == .week ? .day : .hour, count: span == .week ? 1 : (span == .day ? 6 : 2))) { v in
+                AxisValueLabel(collisionResolution: .greedy) {
+                    if let d = v.as(Date.self) {
+                        Text(ChartAxisLabel.text(for: d, span: span, language: store.c.language))
+                            .font(dim.text(8.5))
+                            .foregroundStyle(Color.secondary)
+                    }
+                }
+            }
+        }
+        .chartOverlay { proxy in
+            GeometryReader { geometry in
+                Rectangle().fill(.clear).contentShape(Rectangle())
+                    .onContinuousHover { phase in
+                        switch phase {
+                        case .active(let point):
+                            guard let plot = proxy.plotFrame else { return }
+                            let x = point.x - geometry[plot].origin.x
+                            guard let date: Date = proxy.value(atX: x) else { return }
+                            hovered = marks.min { abs($0.date.timeIntervalSince(date)) < abs($1.date.timeIntervalSince(date)) }
+                        case .ended:
+                            hovered = nil
+                        }
+                    }
+            }
+        }
+        .animation(.easeOut(duration: 0.12), value: hovered)
+    }
+
+    private var legend: some View {
+        HStack(spacing: dim(12)) {
+            legendItem(batteryColor, Copy.text("Akkubetrieb", "On battery"))
+            legendItem(chargingColor, Copy.text("Am Netzteil", "Charging"))
+            Spacer(minLength: 0)
+        }
+    }
+
+    private func legendItem(_ color: Color, _ title: String) -> some View {
+        HStack(spacing: dim(5)) {
+            Capsule().fill(color).frame(width: dim(12), height: dim(3))
+            Text(title).font(dim.text(9)).foregroundStyle(.secondary)
         }
     }
 
@@ -296,16 +361,41 @@ private struct TrendTile: View {
         if s.hasPack { list.append(Mark(t: Date.now.timeIntervalSince1970, p: s.level, ac: s.onMains, w: nil, c: nil)) }
         marks = list
     }
+}
 
-    private var mainsStretches: [(Date, Date)] {
-        var out: [(Date, Date)] = []
-        var start: Date?
-        for m in marks {
-            if m.ac, start == nil { start = m.date }
-            if !m.ac, let s = start { out.append((s, m.date)); start = nil }
+/// Three small pills to pick the chart range, with a sliding highlight.
+private struct SpanSwitch: View {
+    @Binding var span: ChartSpan
+    @Environment(\.dim) private var dim
+    @Namespace private var highlight
+
+    var body: some View {
+        HStack(spacing: dim(1)) {
+            ForEach(ChartSpan.allCases) { option in
+                let selected = option == span
+                Button {
+                    withAnimation(.snappy(duration: 0.22)) { span = option }
+                } label: {
+                    Text(option.shortTitle)
+                        .font(dim.text(9, selected ? .semibold : .medium))
+                        .foregroundStyle(selected ? Color.primary : Color.secondary)
+                        .padding(.horizontal, dim(7))
+                        .padding(.vertical, dim(3))
+                        .background {
+                            if selected {
+                                Capsule()
+                                    .fill(Hue.accent.opacity(0.32))
+                                    .matchedGeometryEffect(id: "pill", in: highlight)
+                            }
+                        }
+                        .contentShape(Capsule())
+                }
+                .buttonStyle(.plain)
+            }
         }
-        if let s = start, let end = marks.last?.date { out.append((s, end)) }
-        return out
+        .padding(dim(2))
+        .background(Capsule().fill(.primary.opacity(0.07)))
+        .fixedSize()
     }
 }
 
@@ -394,11 +484,12 @@ private struct GadgetTile: View {
         }
         .opacity(g.connected ? 1 : 0.45)
         .contextMenu {
-            Button(store.c.pinned.contains(g.id) ? "Nicht mehr in der Menüleiste" : "In der Menüleiste zeigen") {
+            Button(store.c.pinned.contains(g.id) ? Copy.text("Nicht mehr in der Menüleiste", "Remove from menu bar")
+                                                 : Copy.text("In der Menüleiste zeigen", "Show in menu bar")) {
                 if let i = store.c.pinned.firstIndex(of: g.id) { store.c.pinned.remove(at: i) } else { store.c.pinned.append(g.id) }
             }
-            Button("Ausblenden") { store.c.hiddenGadgets.append(g.id) }
-            if !g.connected { Button("Vergessen", role: .destructive) { hub.forget(g.id) } }
+            Button(Copy.text("Ausblenden", "Hide")) { store.c.hiddenGadgets.append(g.id) }
+            if !g.connected { Button(Copy.text("Vergessen", "Forget"), role: .destructive) { hub.forget(g.id) } }
         }
     }
 
@@ -436,7 +527,7 @@ private struct AppsTile: View {
                     .font(dim.text(11)).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            VStack(spacing: dim(9)) {
+            VStack(spacing: dim(12)) {
                 ForEach(rows) { c in
                     HStack(spacing: dim(9)) {
                         Image(nsImage: ledger.icon(for: c)).resizable().frame(width: dim(18), height: dim(18))

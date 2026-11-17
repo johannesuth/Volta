@@ -1,11 +1,13 @@
 #!/bin/zsh
-# Build a universal Volta.app, package it, and optionally install it.
+# Volta · Copyright © 2026 Johannes Uth. All rights reserved.
+# Source-available under the Volta License (see LICENSE). Not for redistribution.
+# Build a universal Volta.app and its disk image (dist/Volta-<version>.dmg); --install also copies it to Applications.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 export DEVELOPER_DIR=${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}
 
 VERSION=${VOLTA_VERSION:-$(<VERSION)}
-BUILD_NUMBER=${VOLTA_BUILD_NUMBER:-29}
+BUILD_NUMBER=${VOLTA_BUILD_NUMBER:-31}
 VERSION_PATTERN='^[0-9]+\.[0-9]+\.[0-9]+([+-][0-9A-Za-z.-]+)?$'
 if ! [[ "$VERSION" =~ $VERSION_PATTERN ]]; then
   print -u2 "Invalid VOLTA_VERSION: expected a version such as 2.1.0."
@@ -31,9 +33,7 @@ X86_BIN="$(swift build -c release --show-bin-path --triple "$X86_TRIPLE" --build
 [[ -x "$ARM_BIN" ]] || { print -u2 "Missing arm64 executable: $ARM_BIN"; exit 1; }
 [[ -x "$X86_BIN" ]] || { print -u2 "Missing x86_64 executable: $X86_BIN"; exit 1; }
 
-if [[ -d "$APP" ]]; then
-  mv "$APP" "build/Volta.app.backup.$(date +%Y%m%d%H%M%S)"
-fi
+rm -rf "$APP" build/Volta.app.backup.*(N)
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 lipo -create "$ARM_BIN" "$X86_BIN" -output "$APP/Contents/MacOS/Volta"
 
@@ -66,7 +66,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleShortVersionString</key><string>${VERSION}</string>
   <key>CFBundleVersion</key><string>${BUILD_NUMBER}</string>
-  <key>NSHumanReadableCopyright</key><string>Copyright © 2026 Johannes Uth</string>
+  <key>NSHumanReadableCopyright</key><string>Copyright © 2026 Johannes Uth. All rights reserved.</string>
   <key>LSApplicationCategoryType</key><string>public.app-category.utilities</string>
   <key>LSMinimumSystemVersion</key><string>15.0</string>
   <key>LSUIElement</key><true/>
@@ -89,25 +89,17 @@ if [[ "$SIGN_IDENTITY" == "-" ]]; then
   codesign --force --deep --sign - "$APP"
   print "Signing: ad-hoc (local development; not notarized)"
 else
-  codesign --force --deep --options runtime --timestamp --sign "$SIGN_IDENTITY" "$APP"
+  codesign --force --options runtime --timestamp --sign "$SIGN_IDENTITY" "$APP"
   print "Signing identity: $SIGN_IDENTITY"
 fi
 codesign --verify --deep --strict "$APP"
 
-mkdir -p "$DIST"
-ZIP="$DIST/Volta-${VERSION}-macos-universal.zip"
-PKG="$DIST/Volta-${VERSION}-installer.pkg"
-rm -f "$ZIP" "$PKG"
-ditto -c -k --keepParent "$APP" "$ZIP"
-PKGROOT=$(mktemp -d "${TMPDIR:-/tmp}/volta-pkg.XXXXXX")
-mkdir -p "$PKGROOT/Applications"
-ditto "$APP" "$PKGROOT/Applications/Volta.app"
-pkgbuild --root "$PKGROOT" --identifier com.johannesuth.volta.pkg --version "$VERSION" --install-location / "$PKG"
-rm -rf "$PKGROOT"
-shasum -a 256 "$ZIP" "$PKG" > "$DIST/SHA256SUMS.txt"
 print "Built and verified: $APP"
-print "Universal archive: $ZIP"
-print "Installer package (unsigned until Developer ID Installer is configured): $PKG"
+rm -rf "$DIST"
+mkdir -p "$DIST"
+./Scripts/make-dmg.sh
+DMG="$DIST/Volta-${VERSION}.dmg"
+(cd "$DIST" && shasum -a 256 "Volta-${VERSION}.dmg" > SHA256SUMS.txt)
 print "SHA-256 manifest: $DIST/SHA256SUMS.txt"
 
 if [[ "${1:-}" == "--install" || "${VOLTA_INSTALL:-0}" == "1" ]]; then
@@ -118,9 +110,8 @@ if [[ "${1:-}" == "--install" || "${VOLTA_INSTALL:-0}" == "1" ]]; then
     mkdir -p "$HOME/Applications"
   fi
   osascript -e 'tell application id "com.johannesuth.volta" to quit' >/dev/null 2>&1 || true
-  if [[ -d "$DEST" ]]; then
-    mv "$DEST" "${DEST}.backup.$(date +%Y%m%d%H%M%S)"
-  fi
+  sleep 1
+  rm -rf "$DEST"
   ditto "$APP" "$DEST"
   /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$DEST"
   open -a "$DEST"

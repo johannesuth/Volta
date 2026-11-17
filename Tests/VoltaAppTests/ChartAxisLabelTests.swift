@@ -1,3 +1,6 @@
+// Volta · Copyright © 2026 Johannes Uth. All rights reserved.
+// Source-available under the Volta License (see LICENSE). Not for redistribution.
+
 import XCTest
 import VoltaLanguageCore
 @testable import Volta
@@ -15,10 +18,10 @@ final class ChartAxisLabelTests: XCTestCase {
         XCTAssertTrue(label.hasPrefix("07"), label)
     }
 
-    func testEnglishHourLabelHasNoGermanSuffix() {
+    func testEnglishHourLabelSaysAMOrPM() {
         let label = ChartAxisLabel.text(for: morning, span: .day, language: .english)
         XCTAssertFalse(label.contains("Uhr"), label)
-        XCTAssertTrue(label.contains("7"), label)
+        XCTAssertEqual(label.replacingOccurrences(of: "\u{202F}", with: " "), "7 AM", "a bare \"07\" is ambiguous in English")
     }
 
     func testWeekLabelsUseTheAppLanguage() {

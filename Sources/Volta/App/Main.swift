@@ -1,5 +1,9 @@
+// Volta · Copyright © 2026 Johannes Uth. All rights reserved.
+// Source-available under the Volta License (see LICENSE). Not for redistribution.
+
 import AppKit
 import SwiftUI
+import UserNotifications
 import VoltaLanguageCore
 
 @main
@@ -21,6 +25,7 @@ final class Conductor: NSObject, NSApplicationDelegate {
         _ = Journal.shared            // starts listening for power ticks
         _ = Telemetry.shared
         _ = GadgetHub.shared
+        UNUserNotificationCenter.current().delegate = NotificationPresenter.shared
         Sentinel.shared.arm()
 
         LoginItem.migrateLegacyAgent()

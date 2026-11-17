@@ -1,3 +1,6 @@
+// Volta · Copyright © 2026 Johannes Uth. All rights reserved.
+// Source-available under the Volta License (see LICENSE). Not for redistribution.
+
 import Foundation
 
 /// Copies a replacement beside its destination, then swaps it in only after the copy succeeds.

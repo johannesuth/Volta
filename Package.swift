@@ -1,4 +1,6 @@
 // swift-tools-version: 6.0
+// Volta · Copyright © 2026 Johannes Uth. All rights reserved.
+// Source-available under the Volta License (see LICENSE). Not for redistribution.
 import PackageDescription
 
 let package = Package(

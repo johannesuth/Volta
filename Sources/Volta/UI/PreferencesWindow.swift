@@ -1,5 +1,9 @@
+// Volta · Copyright © 2026 Johannes Uth. All rights reserved.
+// Source-available under the Volta License (see LICENSE). Not for redistribution.
+
 import SwiftUI
 import AppKit
+import UserNotifications
 import VoltaLanguageCore
 
 enum PrefTab: String, CaseIterable, Identifiable {
@@ -421,16 +425,84 @@ private struct DashboardPrefs: View {
 private struct AlertPrefs: View {
     @Bindable private var store = ConfigStore.shared
     @State private var tones = Chime.catalog()
+    @State private var sample: Trigger.Direction = .down
+    @State private var notifications: Grant = .granted
+
+    private var plan: AlertPlan { store.c.alerts }
 
     var body: some View {
         Form {
-            Section(Copy.text("Akku", "Battery")) {
+            Section {
+                VStack(spacing: 10) {
+                    AlertPreview(plan: plan, direction: sample)
+                    Picker("", selection: $sample) {
+                        Text(Copy.text("Akku fast leer", "Battery low")).tag(Trigger.Direction.down)
+                        Text(Copy.text("Ladeziel erreicht", "Charge target reached")).tag(Trigger.Direction.up)
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .frame(width: 300)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 4)
+            } header: {
+                Text(Copy.text("Vorschau", "Preview"))
+            }
+
+            Section(Copy.text("Darstellung", "Style")) {
+                HStack(spacing: 10) {
+                    ForEach(AlertPlan.styles) { style in
+                        AlertStyleTile(style: style, selected: plan.style == style) {
+                            store.c.alerts.style = style
+                            if style == .banner { Task { await askForNotifications() } }
+                        }
+                    }
+                }
+                .padding(.vertical, 2)
+
+                if plan.style == .banner {
+                    if notifications != .granted {
+                        LabeledContent {
+                            Button(notifications == .unknown ? Copy.text("Erlauben", "Allow") : Copy.text("Systemeinstellungen …", "System Settings …")) {
+                                if notifications == .unknown { Task { await askForNotifications() } } else { openNotificationSettings() }
+                            }
+                        } label: {
+                            Label(Copy.text("Mitteilungen sind für Volta noch nicht erlaubt.", "Notifications are not allowed for Volta yet."),
+                                  systemImage: "exclamationmark.triangle.fill")
+                                .foregroundStyle(Hue.warn)
+                        }
+                    }
+                    Text(Copy.text("Mitteilungen sehen aus wie andere macOS-Mitteilungen und bleiben in der Mitteilungszentrale.",
+                                   "Notifications look like other macOS notifications and stay in Notification Center."))
+                        .font(.callout).foregroundStyle(.secondary)
+                } else {
+                    LabeledContent {
+                        HStack(spacing: 8) {
+                            ForEach(AlertColor.allCases) { color in
+                                Button { store.c.alerts.color = color } label: {
+                                    swatch(color)
+                                        .frame(width: 18, height: 18)
+                                        .overlay(Circle().stroke(.primary.opacity(plan.color == color ? 0.85 : 0), lineWidth: 1.5).padding(-3))
+                                }
+                                .buttonStyle(.plain)
+                                .help(color.title)
+                            }
+                        }
+                    } label: {
+                        SettingLabel(title: Copy.text("Farbe", "Color"),
+                                     detail: plan.color == .level ? Copy.text("Wechselt mit dem Ladestand: Rot, Gelb, Akzent, Grün", "Follows the level: red, yellow, accent, green") : plan.color.title,
+                                     symbol: "paintpalette.fill")
+                    }
+                }
+            }
+
+            Section(Copy.text("Wann", "When")) {
                 Toggle(isOn: $store.c.alerts.lowOn) {
                     SettingLabel(title: Copy.text("Akku fast leer", "Battery low"),
                                  detail: Copy.text("Erinnert dich rechtzeitig ans Aufladen.", "Reminds you to charge in time."),
                                  symbol: "battery.25percent")
                 }
-                if store.c.alerts.lowOn {
+                if plan.lowOn {
                     levelPicker(Copy.text("Warnen bei", "Warn at"), selection: $store.c.alerts.lowLevel, options: AlertPlan.lowLevels)
                 }
                 Toggle(isOn: $store.c.alerts.fullOn) {
@@ -438,27 +510,18 @@ private struct AlertPrefs: View {
                                  detail: Copy.text("Sagt Bescheid, wenn du das Netzteil abziehen kannst.", "Tells you when you can unplug."),
                                  symbol: "bolt.fill")
                 }
-                if store.c.alerts.fullOn {
+                if plan.fullOn {
                     levelPicker(Copy.text("Bescheid geben bei", "Notify at"), selection: $store.c.alerts.fullLevel, options: AlertPlan.fullLevels)
                 }
             }
 
-            Section(Copy.text("So wirst du erinnert", "How you're notified")) {
-                Picker(selection: $store.c.alerts.style) {
-                    ForEach(AlertPlan.styles) { Text($0.title).tag($0) }
-                } label: {
-                    SettingLabel(title: Copy.text("Anzeige", "Display"), symbol: "rectangle.on.rectangle")
-                }
-                .pickerStyle(.segmented)
-                .onChange(of: store.c.alerts.style) { _, style in
-                    if style == .banner { Sentinel.shared.requestNotificationPermission() }
-                }
+            Section(Copy.text("Ton", "Sound")) {
                 Picker(selection: $store.c.alerts.tone) {
                     ForEach(tones, id: \.self) { tone in
                         Text(tone == Chime.silent ? Copy.text("Kein Ton", "No sound") : tone).tag(tone)
                     }
                 } label: {
-                    SettingLabel(title: Copy.text("Ton", "Sound"), symbol: "speaker.wave.2.fill")
+                    SettingLabel(title: Copy.text("Warnton", "Alert sound"), symbol: "speaker.wave.2.fill")
                 }
                 .onChange(of: store.c.alerts.tone) { _, tone in Chime.ring(tone, force: true) }
                 Toggle(isOn: $store.c.quiet.enabled) {
@@ -473,16 +536,27 @@ private struct AlertPrefs: View {
             }
 
             Section {
-                Button(action: preview) {
-                    Label(Copy.text("Warnung testen", "Test alert"), systemImage: "play.fill")
+                Button(action: test) {
+                    Label(Copy.text("Warnung jetzt testen", "Test alert now"), systemImage: "play.fill")
                 }
-                .disabled(!store.c.alerts.lowOn && !store.c.alerts.fullOn)
             } footer: {
                 Text(Copy.text("Warnungen für Zubehör stellst du im Tab „Zubehör“ ein.", "Accessory alerts are in the Accessories tab."))
             }
         }
         .formStyle(.grouped)
         .onAppear { tones = Chime.catalog() }
+        .task { await refreshNotifications() }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            Task { await refreshNotifications() }
+        }
+    }
+
+    @ViewBuilder private func swatch(_ color: AlertColor) -> some View {
+        if color == .level {
+            Circle().fill(AngularGradient(colors: [Hue.alarm, Hue.warn, Hue.accent, Hue.good, Hue.alarm], center: .center))
+        } else {
+            Circle().fill(Hue.alert(color.swatch(direction: .down, level: 50)))
+        }
     }
 
     private func levelPicker(_ title: String, selection: Binding<Int>, options: [Int]) -> some View {
@@ -493,11 +567,146 @@ private struct AlertPrefs: View {
         .padding(.leading, 36)
     }
 
-    private func preview() {
-        guard let rule = store.c.alerts.triggers.first else { return }
+    private func test() {
+        let level = sample == .down ? plan.lowLevel : plan.fullLevel
+        let rule = Trigger(direction: sample, level: level, presentation: plan.style, tone: plan.tone)
         var s = Telemetry.shared.now
         s.minutesToEmpty = s.minutesToEmpty ?? 42
-        Sentinel.shared.stage(rule, level: rule.level, snapshot: s, preview: true)
+        Sentinel.shared.stage(rule, level: level, snapshot: s, preview: true)
+    }
+
+    private func refreshNotifications() async {
+        let settings = await UNUserNotificationCenter.current().notificationSettings()
+        notifications = Grant(notifications: settings.authorizationStatus)
+    }
+
+    private func askForNotifications() async {
+        _ = try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound])
+        await refreshNotifications()
+    }
+
+    private func openNotificationSettings() {
+        let id = Bundle.main.bundleIdentifier ?? "com.johannesuth.volta"
+        if let url = URL(string: "x-apple.systempreferences:com.apple.Notifications-Settings.extension?id=\(id)") {
+            NSWorkspace.shared.open(url)
+        }
+    }
+}
+
+/// One of the three alert styles, as a small tile with an icon and a one-line description.
+private struct AlertStyleTile: View {
+    let style: Presentation
+    let selected: Bool
+    let action: () -> Void
+
+    private var symbol: String {
+        switch style {
+        case .banner: "bell.badge.fill"
+        case .both, .aura: "sparkles"
+        case .card: "rectangle.topthird.inset.filled"
+        }
+    }
+
+    private var detail: String {
+        switch style {
+        case .banner: Copy.text("macOS-Mitteilung", "macOS notification")
+        case .both, .aura: Copy.text("mit leuchtendem Rand", "with a glowing edge")
+        case .card: Copy.text("schlichte Karte oben", "a simple card on top")
+        }
+    }
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 5) {
+                Image(systemName: symbol)
+                    .font(.system(size: 17, weight: .medium))
+                    .foregroundStyle(selected ? Hue.accent : .secondary)
+                    .frame(height: 24)
+                Text(style.title).font(.system(size: 12, weight: .semibold)).lineLimit(1)
+                Text(detail).font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(1)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 10)
+            .background(selected ? Hue.accent.opacity(0.14) : Color.primary.opacity(0.03), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .stroke(selected ? Hue.accent : Color.secondary.opacity(0.2), lineWidth: selected ? 1.5 : 1))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+/// A small desktop showing the alert exactly as it will appear: card, card with glow, or a macOS notification.
+private struct AlertPreview: View {
+    let plan: AlertPlan
+    let direction: Trigger.Direction
+
+    var body: some View {
+        let level = direction == .down ? plan.lowLevel : plan.fullLevel
+        let trigger = Trigger(direction: direction, level: level, presentation: plan.style, tone: plan.tone)
+        var snapshot = Telemetry.shared.now
+        snapshot.minutesToEmpty = 42
+        let notice = Sentinel.notice(for: trigger, level: level, snapshot: snapshot, plan: plan)
+        let shape = RoundedRectangle(cornerRadius: 12, style: .continuous)
+
+        return ZStack(alignment: .top) {
+            LinearGradient(colors: [Color(red: 0.20, green: 0.27, blue: 0.45), Color(red: 0.42, green: 0.30, blue: 0.48),
+                                    Color(red: 0.75, green: 0.48, blue: 0.45)],
+                           startPoint: .topLeading, endPoint: .bottomTrailing)
+            Rectangle().fill(.black.opacity(0.28)).frame(height: 11)
+
+            if notice.aura {
+                shape
+                    .strokeBorder(AngularGradient(colors: [notice.tint, notice.tint.opacity(0.25), notice.tint,
+                                                           notice.tint.opacity(0.4), notice.tint], center: .center),
+                                  lineWidth: 7)
+                    .blur(radius: 5)
+                    .phaseAnimator([0.65, 1.0]) { glow, phase in glow.opacity(phase) } animation: { _ in .easeInOut(duration: 1.6) }
+            }
+
+            if plan.style == .banner {
+                MockNotification(title: notice.headline, message: notice.detail)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+                    .padding(.top, 18)
+                    .padding(.trailing, 10)
+            } else {
+                NoticeCard(notice: notice, close: {})
+                    .scaleEffect(0.6)
+                    .frame(width: 264, height: 96)
+                    .padding(.top, 2)
+                    .allowsHitTesting(false)
+            }
+        }
+        .frame(width: 420, height: 160)
+        .clipShape(shape)
+        .overlay(shape.stroke(.primary.opacity(0.12), lineWidth: 1))
+        .animation(.smooth(duration: 0.25), value: plan)
+        .animation(.smooth(duration: 0.25), value: direction)
+        .accessibilityLabel(Copy.text("Vorschau der Warnung", "Alert preview"))
+    }
+}
+
+/// A look-alike of a macOS notification banner, for the preview only.
+private struct MockNotification: View {
+    let title: String
+    let message: String
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(nsImage: NSApp.applicationIconImage).resizable().frame(width: 26, height: 26)
+            VStack(alignment: .leading, spacing: 1) {
+                HStack {
+                    Text(title).font(.system(size: 11, weight: .semibold)).lineLimit(1)
+                    Spacer(minLength: 4)
+                    Text(Copy.text("jetzt", "now")).font(.system(size: 9)).foregroundStyle(.secondary)
+                }
+                Text(message).font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(2)
+            }
+        }
+        .padding(9)
+        .frame(width: 236)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 13, style: .continuous))
+        .shadow(color: .black.opacity(0.2), radius: 8, y: 3)
     }
 }
 
@@ -686,6 +895,9 @@ private struct HistoryPrefs: View {
 // MARK: - About
 
 private struct AboutPrefs: View {
+    private static let repository = URL(string: "https://github.com/johannesuth/volta")!
+    private static let license = URL(string: "https://github.com/johannesuth/volta/blob/main/LICENSE")!
+
     private var version: String {
         let info = Bundle.main.infoDictionary ?? [:]
         let short = info["CFBundleShortVersionString"] as? String ?? "–"
@@ -695,6 +907,7 @@ private struct AboutPrefs: View {
 
     var body: some View {
         VStack(spacing: 12) {
+            Spacer(minLength: 0)
             Image(nsImage: NSApp.applicationIconImage).resizable().frame(width: 104, height: 104)
                 .shadow(color: .black.opacity(0.2), radius: 12, y: 5)
             Text("Volta").font(.system(size: 28, weight: .bold, design: .rounded))
@@ -702,8 +915,29 @@ private struct AboutPrefs: View {
             Text(Copy.text("Akku, Ladezyklen und Energieverbrauch – direkt in der Menüleiste.\nAlles bleibt auf deinem Mac.",
                            "Battery, charge cycles and energy use, right in the menu bar.\nEverything stays on your Mac."))
                 .multilineTextAlignment(.center).foregroundStyle(.secondary)
-            Text("Copyright © 2026 Johannes Uth")
-                .font(.caption).foregroundStyle(.tertiary)
+
+            HStack(spacing: 10) {
+                Link(destination: Self.repository) {
+                    Label(Copy.text("Projekt auf GitHub", "Project on GitHub"), systemImage: "chevron.left.forwardslash.chevron.right")
+                }
+                Link(destination: Self.license) {
+                    Label(Copy.text("Lizenz", "License"), systemImage: "doc.text")
+                }
+            }
+            .buttonStyle(.bordered)
+            .padding(.top, 4)
+
+            Spacer(minLength: 0)
+            VStack(spacing: 4) {
+                Text("Copyright © 2026 Johannes Uth. " + Copy.text("Alle Rechte vorbehalten.", "All rights reserved."))
+                    .font(.caption.weight(.medium)).foregroundStyle(.secondary)
+                Text(Copy.text("Kostenlos nutzbar. Der Quellcode ist öffentlich einsehbar, darf aber nicht kopiert oder weiterverbreitet werden.",
+                               "Free to use. The source code is public to read, but may not be copied or redistributed."))
+                    .font(.caption).foregroundStyle(.tertiary)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: 420)
+            }
+            .padding(.bottom, 22)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }

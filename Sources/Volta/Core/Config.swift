@@ -1,3 +1,6 @@
+// Volta · Copyright © 2026 Johannes Uth. All rights reserved.
+// Source-available under the Volta License (see LICENSE). Not for redistribution.
+
 import Foundation
 import Observation
 import Carbon.HIToolbox
@@ -121,6 +124,10 @@ enum ChartSpan: String, Codable, CaseIterable, Identifiable {
     var id: Self { self }
     var title: String { ["sixHours": Copy.text("6 Std", "6 hours"), "day": Copy.text("1 Tag", "1 day"), "week": Copy.text("1 Woche", "1 week")][rawValue]! }
     var interval: TimeInterval { ["sixHours": 21_600.0, "day": 86_400.0, "week": 604_800.0][rawValue]! }
+    /// Compact label for the switch above the chart.
+    var shortTitle: String { ["sixHours": Copy.text("6 Std", "6 h"), "day": Copy.text("24 Std", "24 h"), "week": Copy.text("7 Tage", "7 days")][rawValue]! }
+    /// Longer pauses between samples than this are coloured by the level change (rising = charging).
+    var maxGap: TimeInterval { self == .week ? 3 * 3600 : 45 * 60 }
 }
 
 enum GadgetOrder: String, Codable, CaseIterable, Identifiable {
@@ -166,9 +173,43 @@ struct Trigger: Codable, Hashable, Identifiable {
     var level: Int
     var presentation: Presentation
     var tone: String
-    var lingers = false
+    var lingers = false  // read from 2.1 configs only; no longer affects how long an alert shows
     var active = true
 }
+
+/// Colour of the alert card and glow: by charge level (default) or one fixed colour.
+enum AlertColor: String, Codable, CaseIterable, Identifiable {
+    case level, blue, teal, mint, indigo, amber, rose
+    var id: Self { self }
+    var title: String {
+        switch self {
+        case .level: Copy.text("Nach Ladestand", "By charge level")
+        case .blue: Copy.text("Blau", "Blue")
+        case .teal: Copy.text("Türkis", "Teal")
+        case .mint: Copy.text("Mint", "Mint")
+        case .indigo: Copy.text("Indigo", "Indigo")
+        case .amber: Copy.text("Bernstein", "Amber")
+        case .rose: Copy.text("Rosé", "Rose")
+        }
+    }
+
+    /// The colour an alert uses: fixed choices win; "by level" picks green/amber/red/accent.
+    func swatch(direction: Trigger.Direction, level: Int) -> AlertSwatch {
+        switch self {
+        case .level:
+            if direction == .up { return .good }
+            return level <= 10 ? .alarm : (level <= 20 ? .warn : .accent)
+        case .blue: return .blue
+        case .teal: return .teal
+        case .mint: return .mint
+        case .indigo: return .indigo
+        case .amber: return .amber
+        case .rose: return .rose
+        }
+    }
+}
+
+enum AlertSwatch: Equatable { case accent, good, warn, alarm, blue, teal, mint, indigo, amber, rose }
 
 /// The two everyday battery alerts, edited in Settings and turned into rules for `Sentinel`.
 struct AlertPlan: Codable, Equatable {
@@ -178,6 +219,10 @@ struct AlertPlan: Codable, Equatable {
     var fullLevel = 100
     var style: Presentation = .card
     var tone = "Glass"
+    var color: AlertColor = .level
+
+    /// Every card shows briefly, then fades. Fixed on purpose: there is no setting for it.
+    static let showSeconds: Double = 5
 
     static let lowLevels = [10, 15, 20, 25, 30]
     static let fullLevels = [80, 90, 100]
@@ -189,8 +234,7 @@ struct AlertPlan: Codable, Equatable {
     var triggers: [Trigger] {
         var rules: [Trigger] = []
         if lowOn {
-            rules.append(Trigger(id: Self.lowID, direction: .down, level: lowLevel, presentation: style, tone: tone,
-                                 lingers: lowLevel <= 10))
+            rules.append(Trigger(id: Self.lowID, direction: .down, level: lowLevel, presentation: style, tone: tone))
         }
         if fullOn {
             rules.append(Trigger(id: Self.fullID, direction: .up, level: fullLevel, presentation: style, tone: tone))
@@ -218,6 +262,21 @@ struct AlertPlan: Codable, Equatable {
             plan.fullOn = false
         }
         return plan
+    }
+}
+
+extension AlertPlan {
+    /// Tolerant decoding: keys added in later versions fall back to their defaults.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        let d = AlertPlan()
+        lowOn = try c.decodeIfPresent(Bool.self, forKey: .lowOn) ?? d.lowOn
+        lowLevel = try c.decodeIfPresent(Int.self, forKey: .lowLevel) ?? d.lowLevel
+        fullOn = try c.decodeIfPresent(Bool.self, forKey: .fullOn) ?? d.fullOn
+        fullLevel = try c.decodeIfPresent(Int.self, forKey: .fullLevel) ?? d.fullLevel
+        style = (try? c.decodeIfPresent(Presentation.self, forKey: .style)) ?? d.style
+        tone = try c.decodeIfPresent(String.self, forKey: .tone) ?? d.tone
+        color = (try? c.decodeIfPresent(AlertColor.self, forKey: .color)) ?? d.color
     }
 }
 
@@ -292,6 +351,27 @@ struct Config: Codable, Equatable {
     var language: AppLanguage = .detected(from: Locale.current.identifier)
     var languageChosen = false
 
+    /// Stored settings laid over the defaults, recursively, so keys added in a newer version
+    /// (also inside nested blocks such as `alerts`) get their default instead of failing to load.
+    static func merged(defaults: Config, stored: [String: Any]) -> Config? {
+        guard let defaultsData = try? JSONEncoder().encode(defaults),
+              let base = try? JSONSerialization.jsonObject(with: defaultsData) as? [String: Any],
+              let data = try? JSONSerialization.data(withJSONObject: deepMerge(base, stored)) else { return nil }
+        return try? JSONDecoder().decode(Config.self, from: data)
+    }
+
+    private static func deepMerge(_ base: [String: Any], _ overlay: [String: Any]) -> [String: Any] {
+        var out = base
+        for (key, value) in overlay {
+            if let inner = value as? [String: Any], let existing = out[key] as? [String: Any] {
+                out[key] = deepMerge(existing, inner)
+            } else {
+                out[key] = value
+            }
+        }
+        return out
+    }
+
     func resetForSettings() -> Config {
         var fresh = Config()
         fresh.onboarded = onboarded
@@ -348,12 +428,8 @@ final class ConfigStore {
     private static func read(from url: URL) -> Config {
         guard let stored = try? Data(contentsOf: url),
               let storedObject = try? JSONSerialization.jsonObject(with: stored) as? [String: Any],
-              let defaultsData = try? JSONEncoder().encode(Config()),
-              var merged = try? JSONSerialization.jsonObject(with: defaultsData) as? [String: Any]
+              var cfg = Config.merged(defaults: Config(), stored: storedObject)
         else { return Config() }
-        merged.merge(storedObject) { _, new in new }
-        guard let data = try? JSONSerialization.data(withJSONObject: merged),
-              var cfg = try? JSONDecoder().decode(Config.self, from: data) else { return Config() }
         if storedObject["glyphTint"] == nil {
             cfg.glyphTint = GlyphTint.legacyValue(tinted: storedObject["glyphTinted"] as? Bool)
         }

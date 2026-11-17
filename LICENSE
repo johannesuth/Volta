@@ -1,6 +1,44 @@
+Volta License
+
 Copyright © 2026 Johannes Uth. All rights reserved.
 
-This software and its source code are proprietary. No permission is granted to use,
-copy, modify, merge, publish, distribute, sublicense, or sell copies of the
-software or its source code without prior written permission from the copyright
-holder, except as permitted by applicable law.
+Volta is free to download and use. Its source code is published so that
+anyone can see how the app works and check what it does on their Mac.
+Volta is source-available software, not open-source software: the code,
+design and artwork remain the property of the copyright holder.
+
+1. You may
+
+   a. download, install and use Volta free of charge, on any number of your
+      own Macs, privately or at work;
+   b. read and study the source code, and build it on your own Macs for your
+      own use;
+   c. share links to this repository and to its official releases;
+   d. report problems and suggest improvements through GitHub Issues.
+
+2. You may not, without prior written permission from the copyright holder
+
+   a. copy, publish or distribute the source code, in whole or in substantial
+      part;
+   b. publish or distribute modified versions of Volta, or apps or products
+      derived from its code, design or artwork;
+   c. sell Volta, offer it under another name, or redistribute the app or its
+      installer anywhere other than this repository's official releases;
+   d. remove or change copyright notices or this license.
+
+3. GitHub
+
+   While this repository is public, GitHub's Terms of Service allow GitHub
+   users to view it and to fork it on GitHub. That permission is limited to
+   GitHub and does not grant any of the rights listed in section 2.
+
+4. No warranty
+
+   Volta is provided "as is", without warranty of any kind, express or
+   implied. To the extent permitted by law, the copyright holder is not liable
+   for any damage arising from the use of Volta.
+
+5. Questions and permission requests
+
+   Open an issue at https://github.com/johannesuth/volta/issues or contact
+   Johannes Uth through GitHub.

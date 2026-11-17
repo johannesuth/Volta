@@ -1,3 +1,6 @@
+// Volta · Copyright © 2026 Johannes Uth. All rights reserved.
+// Source-available under the Volta License (see LICENSE). Not for redistribution.
+
 import AppKit
 import QuartzCore
 import SwiftUI
@@ -10,7 +13,8 @@ struct Notice {
     var fraction: Double
     var aura: Bool
     var card: Bool
-    var lingers: Bool
+    /// Seconds on screen; `nil` keeps it until clicked.
+    var seconds: Double?
     var urgent: Bool
 }
 
@@ -143,7 +147,7 @@ final class Spotlight {
             cardWindow = panel
         }
 
-        let seconds: Double = n.lingers ? 60 : 8
+        guard let seconds = n.seconds else { return }
         expiry = Task { [weak self] in
             try? await Task.sleep(for: .seconds(seconds))
             guard !Task.isCancelled else { return }

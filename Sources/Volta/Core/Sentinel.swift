@@ -1,3 +1,6 @@
+// Volta · Copyright © 2026 Johannes Uth. All rights reserved.
+// Source-available under the Volta License (see LICENSE). Not for redistribution.
+
 import Foundation
 import SwiftUI
 import UserNotifications
@@ -77,19 +80,26 @@ final class Sentinel {
                 banner(g.name, Copy.text("Akku bei \(level) %", "Battery at \(level)%"))
                 continue
             }
+            let alerts = ConfigStore.shared.c.alerts
             Spotlight.shared.present(Notice(
                 headline: "\(g.name) · \(level) %",
                 detail: Copy.text("Der Akku des Zubehörs ist fast leer.", "This accessory is running low."),
                 symbol: g.family.sfSymbol,
-                tint: level <= 10 ? Hue.alarm : (level <= 20 ? Hue.warn : Hue.accent),
+                tint: Hue.alert(alerts.color.swatch(direction: .down, level: level)),
                 fraction: Double(level) / 100,
-                aura: false, card: true, lingers: false, urgent: false))
+                aura: alerts.style.wantsAura, card: true, seconds: AlertPlan.showSeconds, urgent: false))
         }
     }
 
-    /// Shows a trigger. `preview` is used by Settings' play buttons.
+    /// Shows a trigger. `preview` is used by Settings' test button.
     func stage(_ t: Trigger, level: Int, snapshot s: PowerSnapshot, preview: Bool) {
         Chime.ring(t.tone, force: preview)
+        let notice = Self.notice(for: t, level: level, snapshot: s, plan: ConfigStore.shared.c.alerts)
+        if t.presentation == .banner { banner(notice.headline, notice.detail) } else { Spotlight.shared.present(notice) }
+    }
+
+    /// The card's content and look for a trigger; also used for the live preview in Settings.
+    static func notice(for t: Trigger, level: Int, snapshot s: PowerSnapshot, plan: AlertPlan) -> Notice {
         let urgent = t.direction == .down && level <= 10
         let detail: String
         switch t.direction {
@@ -102,22 +112,29 @@ final class Sentinel {
             detail = level >= 100 ? Copy.text("Akku voll. Du kannst das Netzteil abziehen.", "The battery is full. You can unplug the charger.")
                                   : Copy.text("Ladeziel erreicht. Das schont den Akku.", "Charge limit reached. This helps protect the battery.")
         }
-        let notice = Notice(
+        return Notice(
             headline: t.direction == .down ? Copy.text("Noch \(level) %", "\(level)% remaining")
                                             : Copy.text("Auf \(level) % geladen", "Charged to \(level)%"),
             detail: detail,
-            symbol: t.direction == .down ? "battery.25percent" : "bolt.fill",
-            tint: t.direction == .up ? Hue.good : (level <= 10 ? Hue.alarm : (level <= 20 ? Hue.warn : Hue.accent)),
+            symbol: t.direction == .down ? (urgent ? "battery.0percent" : "battery.25percent") : "bolt.fill",
+            tint: Hue.alert(plan.color.swatch(direction: t.direction, level: level)),
             fraction: Double(level) / 100,
             aura: t.presentation.wantsAura, card: t.presentation.wantsCard,
-            lingers: t.lingers, urgent: urgent)
-        if t.presentation == .banner { banner(notice.headline, notice.detail) } else { Spotlight.shared.present(notice) }
+            seconds: AlertPlan.showSeconds, urgent: urgent)
     }
 
+    /// A real macOS notification (banner and Notification Center). Asks for permission first if needed.
     private func banner(_ title: String, _ body: String) {
-        let content = UNMutableNotificationContent()
-        content.title = title
-        content.body = body
-        UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil))
+        Task {
+            let center = UNUserNotificationCenter.current()
+            if await center.notificationSettings().authorizationStatus == .notDetermined {
+                guard (try? await center.requestAuthorization(options: [.alert, .sound])) == true else { return }
+            }
+            let content = UNMutableNotificationContent()
+            content.title = title
+            content.body = body
+            content.threadIdentifier = "battery"
+            try? await center.add(UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil))
+        }
     }
 }

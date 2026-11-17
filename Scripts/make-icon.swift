@@ -1,3 +1,6 @@
+// Volta · Copyright © 2026 Johannes Uth. All rights reserved.
+// Source-available under the Volta License (see LICENSE). Not for redistribution.
+
 import AppKit
 
 // Renders Volta's app icon (1024 pt): graphite squircle, one thin arc, a plain bolt.

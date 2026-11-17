@@ -1,3 +1,6 @@
+// Volta · Copyright © 2026 Johannes Uth. All rights reserved.
+// Source-available under the Volta License (see LICENSE). Not for redistribution.
+
 public enum AppProfile {
     /// Keep the production folder stable while allowing isolated local QA profiles.
     public static func supportFolderName(arguments: [String]) -> String {

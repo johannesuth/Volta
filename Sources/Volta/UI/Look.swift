@@ -1,3 +1,6 @@
+// Volta · Copyright © 2026 Johannes Uth. All rights reserved.
+// Source-available under the Volta License (see LICENSE). Not for redistribution.
+
 import SwiftUI
 import AppKit
 
@@ -55,6 +58,22 @@ enum Hue {
         return value <= 10 ? coral : (value <= 20 ? amber : mint)
     }
 
+    /// Colour for an alert card, glow and preview.
+    static func alert(_ swatch: AlertSwatch) -> Color {
+        switch swatch {
+        case .accent: accent
+        case .good: good
+        case .warn: warn
+        case .alarm: alarm
+        case .blue: sky
+        case .teal: lagoon
+        case .mint: mint
+        case .indigo: iris
+        case .amber: amber
+        case .rose: blush
+        }
+    }
+
     /// Keep cards visually calm; reserve state colours for data and alerts.
     static func of(_ kind: TileKind) -> Color { accent }
 }
@@ -64,12 +83,16 @@ enum Hue {
 /// Fixed-size layout metrics shared across the dropdown.
 struct Dim {
     var k: CGFloat = 1
+    /// Type is set about 11 % larger than the layout grid, so text reads comfortably while the panel keeps its size.
+    var type: CGFloat = 1.11
     func callAsFunction(_ v: CGFloat) -> CGFloat { v * k }
+    func pointSize(_ size: CGFloat) -> CGFloat { size * k * type }
+    /// Regular text is drawn one step heavier (medium), which reads better on the translucent panel.
     func text(_ size: CGFloat, _ weight: Font.Weight = .regular) -> Font {
-        .system(size: size * k, weight: weight)
+        .system(size: pointSize(size), weight: weight == .regular ? .medium : weight)
     }
     func number(_ size: CGFloat, _ weight: Font.Weight = .semibold) -> Font {
-        .system(size: size * k, weight: weight, design: .rounded).monospacedDigit()
+        .system(size: pointSize(size), weight: weight, design: .rounded).monospacedDigit()
     }
 }
 

@@ -1,3 +1,6 @@
+// Volta · Copyright © 2026 Johannes Uth. All rights reserved.
+// Source-available under the Volta License (see LICENSE). Not for redistribution.
+
 import AppKit
 import ServiceManagement
 import SwiftUI
@@ -162,6 +165,12 @@ private struct OnboardingView: View {
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
+            HStack(spacing: 8) {
+                chip("battery.75percent", Copy.text("Ladestand", "Charge"))
+                chip("heart.fill", Copy.text("Akkuzustand", "Battery health"))
+                chip("bolt.fill", Copy.text("Energieverbrauch", "Energy use"))
+            }
+            .padding(.top, 4)
             VStack(spacing: 8) {
                 Text(Copy.text("Sprache", "Language"))
                     .font(.system(size: 11, weight: .semibold))
@@ -179,6 +188,17 @@ private struct OnboardingView: View {
             .padding(.top, 16)
             Spacer(minLength: 0)
         }
+    }
+
+    private func chip(_ symbol: String, _ title: String) -> some View {
+        HStack(spacing: 5) {
+            Image(systemName: symbol).font(.system(size: 10, weight: .semibold)).foregroundStyle(Hue.accent)
+            Text(title).font(.system(size: 11.5, weight: .medium))
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(Hue.accent.opacity(0.12), in: Capsule())
+        .fixedSize()
     }
 
     // MARK: Step 2 – permissions

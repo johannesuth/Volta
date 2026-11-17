@@ -1,3 +1,6 @@
+// Volta · Copyright © 2026 Johannes Uth. All rights reserved.
+// Source-available under the Volta License (see LICENSE). Not for redistribution.
+
 import Foundation
 
 /// Persists intentional history clears and invalidates asynchronous work submitted before a clear.

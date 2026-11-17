@@ -2,6 +2,30 @@
 
 All notable changes to Volta are recorded here. Dates use ISO 8601.
 
+## [2.3.0] — 2026-11-17
+
+### Added
+- Disk-image installer `Volta-<version>.dmg` with a designed window: the Volta icon, an arrow and an Applications shortcut, with “Drag Volta into Applications” in English and German. Built by `Scripts/make-dmg.sh`; it replaces the ZIP, the unsigned `.pkg` and the per-user install command.
+- Live alert preview in Settings → Alerts, switchable between “battery low” and “charge target reached”.
+- Alert color: by charge level (default) or blue, teal, mint, indigo, amber or rose.
+- License and copyright notice in Settings → About, in the app's Info.plist, on the installer window and in every source file.
+
+### Changed
+- The “Notification” alert style now always posts a real macOS notification, also while Volta is in front, and it appears in Notification Center. Before, it could look like the card.
+- Alert cards stay for five seconds, then fade out. The display time is no longer a setting.
+- History chart: charging phases are green and battery phases blue. Gaps in the log are bridged and colored by what must have happened (a rising level counts as charging), so charging phases no longer disappear. The range switch is a compact pill control.
+- English chart labels show “5 PM” instead of an ambiguous “17”.
+- Dashboard text is about 11 % larger; the panel keeps its size.
+- The welcome step of the first-run setup shows three short feature chips.
+- `build-app.sh --install` replaces the installed app instead of leaving `Volta.app.backup.*` copies in Applications.
+- `sign-notarize.sh` signs, notarizes and staples the app and the disk image.
+- License: Volta is free to use and source-available. Using and building it for yourself is allowed; copying, republishing or redistributing the code is not.
+
+### Verification
+- `swift test`: 68 tests passed (54 app, 14 language core), including new tests for alert options, the fixed five-second display time, configuration merging, chart segments and English time labels.
+- Checked live: the disk image opens with the designed window and ejects cleanly; a test notification was delivered by macOS; a test card disappeared after five seconds; the setup and dashboard were checked in English and German.
+- Universal app (`arm64`, `x86_64`), ad-hoc signed. The disk image is not notarized yet.
+
 ## [2.2.2] — 2026-11-17
 
 ### Changed

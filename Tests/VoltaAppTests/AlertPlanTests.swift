@@ -1,3 +1,6 @@
+// Volta · Copyright © 2026 Johannes Uth. All rights reserved.
+// Source-available under the Volta License (see LICENSE). Not for redistribution.
+
 import XCTest
 @testable import Volta
 
@@ -24,14 +27,6 @@ final class AlertPlanTests: XCTestCase {
         plan.style = .both
         XCTAssertEqual(plan.triggers.map(\.id), before)
         XCTAssertTrue(plan.triggers.allSatisfy { $0.presentation == .both })
-    }
-
-    func testVeryLowWarningsStayVisibleLonger() {
-        var plan = AlertPlan()
-        plan.lowLevel = 10
-        XCTAssertTrue(plan.triggers.first { $0.direction == .down }!.lingers)
-        plan.lowLevel = 20
-        XCTAssertFalse(plan.triggers.first { $0.direction == .down }!.lingers)
     }
 
     func testUntouchedEarlierRuleSetBecomesTheNewDefault() {
