@@ -105,55 +105,6 @@ brew install --cask volta
 
 Volta also responds to `volta://open`, `volta://close` and `volta://preferences`, for example from Shortcuts or a terminal: `open volta://open`.
 
-## Build from source
-
-You need macOS 15 or later and Xcode.
-
-```sh
-git clone https://github.com/johannesuth/volta.git
-cd volta
-export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
-swift test                          # 114 unit tests
-./Scripts/build-app.sh              # build/Volta.app and dist/Volta-<version>.dmg
-./Scripts/build-app.sh --install    # also replaces /Applications/Volta.app and starts it
-```
-
-Building is allowed for your own use; see [License](#license).
-
-```text
-Sources/Volta/               app, dashboard, settings, alerts, menu-bar icon
-Sources/VoltaLanguageCore/   language, profiles and setup logic
-Tests/                       unit tests, including pixel tests of the menu-bar icon
-Resources/                   English and German strings
-Scripts/                     app, icon and disk-image builds, signing and notarization
-Casks/volta.rb               Homebrew Cask
-docs/                        release notes and screenshots
-```
-
-## Releasing
-
-For the maintainer. Requires a paid Apple Developer Program membership.
-
-1. Install a **Developer ID Application** certificate and store notarization credentials once with `xcrun notarytool store-credentials VoltaNotary`. Never commit certificates or credentials.
-2. Build, sign, notarize and staple the app and the disk image:
-
-   ```sh
-   export VOLTA_SIGN_IDENTITY='Developer ID Application: Johannes Uth (TEAMID)'
-   export VOLTA_NOTARY_PROFILE='VoltaNotary'
-   ./Scripts/sign-notarize.sh
-   ```
-
-3. Put the printed SHA-256 into `Casks/volta.rb`.
-4. Publish:
-
-   ```sh
-   git tag v2.5.1 && git push origin v2.5.1
-   gh release create v2.5.1 dist/Volta-2.5.1.dmg dist/SHA256SUMS.txt \
-     --title 'Volta 2.5.1' --notes-file docs/releases/2.5.1.md
-   ```
-
-See [CHANGELOG.md](CHANGELOG.md) for the version history.
-
 ## License
 
 **Free to use · source available · © 2026 Johannes Uth. All rights reserved.**
